@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'dart:math';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Máy tính lãi suất',
+      theme: ThemeData(primarySwatch: Colors.grey),
+      home: const InterestScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class InterestScreen extends StatefulWidget {
+  const InterestScreen({super.key});
+
+  @override
+  State<InterestScreen> createState() => _InterestScreenState();
+}
+
+class _InterestScreenState extends State<InterestScreen> {
+  // Bộ điều khiển để lấy dữ liệu từ ô nhập
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _rateController = TextEditingController();
+  String _result = "";
+
+  void _calculate() {
+    setState(() {
+      double? rate = double.tryParse(_rateController.text);
+
+      if (rate != null && rate > 0) {
+        // Công thức tính số năm để tiền gấp đôi: log(2) / log(1 + r)
+        // Hoặc dùng quy tắc 72 xấp xỉ: 72 / lãi suất
+        double years = log(2) / log(1 + (rate / 100));
+        _result = years.toStringAsFixed(2); // Lấy 2 chữ số thập phân
+      } else {
+        _result = "Lỗi: Lãi suất phải > 0";
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: const Icon(Icons.menu),
+        title: const Text('Máy tính lãi suất'),
+        actions: [const Icon(Icons.more_vert)],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ô nhập số tiền
+            _buildInputRow("Số tiền", _amountController),
+            const SizedBox(height: 20),
+            // Ô nhập lãi suất
+            _buildInputRow("Lãi hàng năm (%)", _rateController),
+            const SizedBox(height: 30),
+
+            // Hiển thị kết quả
+            Text(
+              "Số năm để tiền tăng gấp đôi: $_result",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 30),
+            // Nút tính toán
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _calculate,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.black),
+                  shape: const RoundedRectangleBorder(), // Hình vuông như ảnh
+                ),
+                child: const Text("Tính toán"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputRow(String label, TextEditingController controller) {
+    return Row(
+      children: [
+        Expanded(flex: 2, child: Text(label, style: const TextStyle(fontSize: 16))),
+        Expanded(
+          flex: 3,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
