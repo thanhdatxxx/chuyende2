@@ -1,0 +1,146 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: InterestCalculator(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class InterestCalculator extends StatefulWidget {
+  const InterestCalculator({super.key});
+
+  @override
+  State<InterestCalculator> createState() => _InterestCalculatorState();
+}
+
+class _InterestCalculatorState extends State<InterestCalculator> {
+
+  final TextEditingController _principalController = TextEditingController();
+  final TextEditingController _rateController = TextEditingController();
+
+  String _resultText = "";
+
+  void _calculateDoubleTime() {
+    setState(() {
+      _resultText = "Kết quả hiển thị ở đây";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Máy tính lãi suất'),
+      ),
+
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+
+          children: [
+
+            // 1. Số tiền
+            Row(
+              children: [
+                const Expanded(
+                  flex: 2,
+                  child: Text('Số tiền', style: TextStyle(fontSize: 16)),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _principalController,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // 2. Lãi hàng năm
+            Row(
+              children: [
+                const Expanded(
+                  flex: 2,
+                  child: Text('Lãi hàng năm', style: TextStyle(fontSize: 16)),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _rateController,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // 3. Kết quả
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Số năm để tiền tăng gấp đôi',
+                  style: TextStyle(fontSize: 16),
+                ),
+
+                const SizedBox(width: 16),
+
+                Expanded(
+                  child: Text(
+                    _resultText,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
+
+            // 4. Nút tính
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed: _calculateDoubleTime,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  side: const BorderSide(color: Colors.black, width: 1.5),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 15,
+                  ),
+                ),
+                child: const Text(
+                  'Tính toán',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
