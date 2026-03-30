@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1075523292633",
+    "project_id": "chuende2acc",
+    "storage_bucket": "chuende2acc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1075523292633:android:103e12e49ea4c8ac9e5dc8",
+        "android_client_info": {
+          "package_name": "com.example.chuyende22"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKHNfXvOIe8E7mDaGwgesUNpI8hdUW_6Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
