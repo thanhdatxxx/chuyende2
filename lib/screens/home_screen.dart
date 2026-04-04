@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'payment_screen.dart';
@@ -19,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
 
   String selectedRank = 'Tất cả';
-  List<String> ranks = ['Tất cả', 'Đồng', 'Bạc', 'Vàng', 'Bạch Kim', 'Kim Cương', 'Cao Thủ', 'Thách Đấu'];
+  List<String> ranks = ['Tất cả', 'Đồng', 'Bạc', 'Vàng', 'Bạch Kim', 'Kim Cương', 'Tinh Anh', 'Cao Thủ', 'Chiến Tướng', 'Thách Đấu'];
 
   int currentPage = 1;
   final int itemsPerPage = 12;
@@ -36,9 +37,36 @@ class _HomeScreenState extends State<HomeScreen> {
     return status.contains('đã bán') || status.contains('da ban');
   }
 
+  String _getRankIcon(String rankName) {
+    rankName = rankName.toLowerCase();
+    if (rankName.contains('đồng')) return 'assets/images/rank/Bronze_rank.png';
+    if (rankName.contains('bạc')) return 'assets/images/rank/Silver_rank.png';
+    if (rankName.contains('vàng')) return 'assets/images/rank/Gold_rank.png';
+    if (rankName.contains('bạch kim')) return 'assets/images/rank/Platinum_rank.png';
+    if (rankName.contains('kim cương')) return 'assets/images/rank/Diamond_rank.png';
+    if (rankName.contains('tinh anh')) return 'assets/images/rank/Veteran_Rank.png';
+    if (rankName.contains('cao thủ')) return 'assets/images/rank/Master_rank.png';
+    if (rankName.contains('chiến tướng') || rankName.contains('thách đấu') || rankName.contains('conquerer')) {
+      return 'assets/images/rank/Conquerer_rank.png';
+    }
+    return 'assets/images/rank/Bronze_rank.png';
+  }
+
+  Color _getRankColor(String rankName) {
+    rankName = rankName.toLowerCase();
+    if (rankName.contains('đồng')) return const Color(0xFFCD7F32);
+    if (rankName.contains('bạc')) return const Color(0xFFC0C0C0);
+    if (rankName.contains('vàng')) return const Color(0xFFFFD700);
+    if (rankName.contains('bạch kim')) return const Color(0xFFE5E4E2);
+    if (rankName.contains('kim cương')) return const Color(0xFFB9F2FF);
+    if (rankName.contains('tinh anh')) return const Color(0xFFA855F7);
+    if (rankName.contains('cao thủ')) return const Color(0xFFFF4500);
+    if (rankName.contains('chiến tướng') || rankName.contains('thách đấu')) return const Color(0xFFFF0000);
+    return Colors.black87;
+  }
+
   Map<String, dynamic> _sanitizeAccountData(Map<String, dynamic> account) {
     final safeData = Map<String, dynamic>.from(account);
-    // Tránh lộ dữ liệu nhạy cảm ở danh sách công khai.
     safeData.remove('taikhoan');
     safeData.remove('matkhau');
     return safeData;
@@ -55,11 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final price = _asDouble(acc['price']);
+    final NumberFormat currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận mua tài khoản'),
-        content: Text('Bạn có muốn mua tài khoản #$displayCode với giá ${price.toInt()}đ không?'),
+        content: Text('Bạn có muốn mua tài khoản #$displayCode với giá ${currencyFormat.format(price)} không?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
           ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mua ngay')),
@@ -276,9 +306,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return HoverMenuItem(title: title, icon: icon, onTap: onTap);
   }
 
-  // (Các phần code Banner, Filter, Grid... giữ nguyên)
   Widget _buildBannerSlider() {
-    final List<String> imgList = ['assets/images/banner1.jpg', 'assets/images/banner2.jpg'];
+    final List<String> imgList = ['assets/images/banner1.jpg', 'assets/images/banner2.jpg', 'assets/images/banner3.jpg'];
     return ClipRect(
       child: CarouselSlider(
         options: CarouselOptions(
@@ -303,44 +332,86 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFilterBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
-      ),
-      child: Wrap(
-        spacing: 20, runSpacing: 15, alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Rank: ", style: TextStyle(fontWeight: FontWeight.bold)),
-              DropdownButton<String>(
-                value: selectedRank,
-                items: ranks.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                onChanged: (val) => setState(() {
-                  selectedRank = val!;
-                  currentPage = 1;
-                  soldCurrentPage = 1;
-                }),
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxWidth: 1200),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B).withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Wrap(
+          spacing: 20,
+          runSpacing: 15,
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            // Dropdown Rank
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
               ),
-            ],
-          ),
-          _buildPriceInput("Giá từ:", _minPriceController),
-          _buildPriceInput("đến:", _maxPriceController),
-          ElevatedButton.icon(
-            onPressed: () => setState(() {
-              currentPage = 1;
-              soldCurrentPage = 1;
-            }),
-            icon: const Icon(Icons.search, size: 18, color: Colors.white),
-            label: const Text("Lọc ngay", style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF97316)),
-          ),
-        ],
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedRank,
+                  dropdownColor: const Color(0xFF1E293B),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFFF97316)),
+                  items: ranks.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (val) => setState(() {
+                    selectedRank = val!;
+                    currentPage = 1;
+                    soldCurrentPage = 1;
+                  }),
+                ),
+              ),
+            ),
+            // Input Giá
+            _buildPriceInput("Giá từ:", _minPriceController),
+            _buildPriceInput("đến:", _maxPriceController),
+            // Nút Lọc và Xóa
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => setState(() {
+                    currentPage = 1;
+                    soldCurrentPage = 1;
+                  }),
+                  icon: const Icon(Icons.search, size: 20, color: Colors.white),
+                  label: const Text("Lọc", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  onPressed: () => setState(() {
+                    _minPriceController.clear();
+                    _maxPriceController.clear();
+                    selectedRank = 'Tất cả';
+                    currentPage = 1;
+                    soldCurrentPage = 1;
+                  }),
+                  icon: const Icon(Icons.refresh, color: Colors.white70),
+                  tooltip: "Xóa bộ lọc",
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -349,9 +420,27 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(width: 8),
-        SizedBox(width: 120, height: 40, child: TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10), border: OutlineInputBorder(), hintText: "Nhập giá..."))),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white70)),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 140,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.08),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF97316))),
+              hintText: "Nhập giá...",
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -422,7 +511,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ? 2
             : 1;
 
-        final childAspectRatio = crossAxisCount == 1 ? 1.12 : 0.72;
+        // Tối ưu tỷ lệ khung hình cho mobile (crossAxisCount == 1) để tránh tràn viền
+        final childAspectRatio = screenWidth < 450 
+            ? 0.94 
+            : (crossAxisCount == 1 ? 1.08 : 0.72);
 
         if (availableDocs.isEmpty && soldDocs.isEmpty) {
           return const Center(child: Text('Không có tài khoản nào'));
@@ -505,6 +597,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildAccountCard(Map<String, dynamic> acc, String id, int globalIndex) {
     final displayCode = 123001 + globalIndex;
     final isSold = _isSoldStatus(acc['status']);
+    final rankName = (acc['rank'] ?? '').toString();
+    final price = _asDouble(acc['price']);
+    final NumberFormat currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.shade200)),
@@ -512,50 +608,92 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Expanded(
-            flex: 3,
+            flex: 4, 
             child: Container(
               width: double.infinity,
               color: Colors.grey.shade900,
               child: _PreviewableNetworkImage(imageUrl: (acc['image_url'] ?? '').toString()),
             ),
           ),
-          Expanded(flex: 3, child: Padding(padding: const EdgeInsets.all(12.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text("Mã số: #$displayCode", style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text("${acc['price']}đ", style: const TextStyle(color: Color(0xFFF97316), fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 5),
-            Text("Rank: ${acc['rank']}", style: const TextStyle(fontSize: 14, color: Colors.black87)),
-            Text("Tướng: ${acc['hero_count']} | Skin: ${acc['skin_count'] ?? 0}", style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            const Spacer(),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pushNamed(
-                    context,
-                    '/detail',
-                    arguments: {
-                      'docId': id,
-                      'displayCode': displayCode,
-                      'account': Map<String, dynamic>.from(acc),
-                    },
+          Expanded(
+            flex: 5, 
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10), 
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Mã số: #$displayCode", style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(currencyFormat.format(price), style: const TextStyle(color: Color(0xFFF97316), fontWeight: FontWeight.bold, fontSize: 17)),
+                  const SizedBox(height: 8),
+
+                  // Rank Row
+                  Row(
+                    children: [
+                      const Text("Rank: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54)),
+                      const SizedBox(width: 2),
+                      Image.asset(_getRankIcon(rankName), width: 22, height: 22, fit: BoxFit.contain),
+                      const SizedBox(width: 4),
+                      Expanded(child: Text(rankName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _getRankColor(rankName)), overflow: TextOverflow.ellipsis)),
+                    ],
                   ),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 10)),
-                  child: const Text("Chi tiết", style: TextStyle(fontSize: 11)),
-                ),
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isSold ? null : () => _handleBuyFromHome(acc, id, displayCode),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isSold ? Colors.grey : const Color(0xFFF97316),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+
+                  const SizedBox(height: 6),
+                  // Info Row
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 10,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset('assets/images/rank/tuong.png', width: 22, height: 22, fit: BoxFit.contain),
+                          const SizedBox(width: 4),
+                          Text("${acc['hero_count']} Tướng", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset('assets/images/rank/skin.png', width: 22, height: 22, fit: BoxFit.contain),
+                          const SizedBox(width: 4),
+                          Text("${acc['skin_count'] ?? 0} Skin", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
                   ),
-                  child: Text(isSold ? 'Đã bán' : 'Mua', style: const TextStyle(fontSize: 11, color: Colors.white)),
-                ),
+                  const Spacer(),
+                  // Buttons - Khôi phục kích thước bình thường
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pushNamed(context, '/detail', arguments: {'docId': id, 'displayCode': displayCode, 'account': Map<String, dynamic>.from(acc)}),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text("Chi tiết", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isSold ? null : () => _handleBuyFromHome(acc, id, displayCode),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSold ? Colors.grey : const Color(0xFFF97316),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text(isSold ? 'Đã bán' : 'Mua ngay', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  )
+                ],
               ),
-            ])
-          ])))
+            ),
+          )
         ],
       ),
     );
@@ -696,8 +834,3 @@ class _PreviewableNetworkImageState extends State<_PreviewableNetworkImage> {
     );
   }
 }
-
-
-
-
-
