@@ -512,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : 1;
 
         // Tối ưu tỷ lệ khung hình cho mobile (crossAxisCount == 1) để tránh tràn viền
-        final childAspectRatio = screenWidth < 450 
+        final childAspectRatio = screenWidth < 450
             ? 0.94 
             : (crossAxisCount == 1 ? 1.08 : 0.72);
 
@@ -608,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Expanded(
-            flex: 4, 
+            flex: 4,
             child: Container(
               width: double.infinity,
               color: Colors.grey.shade900,
@@ -616,7 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Expanded(
-            flex: 5, 
+            flex: 5,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10), 
               child: Column(
@@ -632,7 +632,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Text("Rank: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54)),
                       const SizedBox(width: 2),
-                      Image.asset(_getRankIcon(rankName), width: 22, height: 22, fit: BoxFit.contain),
+                      Image.asset(
+                        _getRankIcon(rankName), 
+                        width: 28, height: 28, 
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        isAntiAlias: true,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(child: Text(rankName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _getRankColor(rankName)), overflow: TextOverflow.ellipsis)),
                     ],
@@ -647,17 +653,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Image.asset('assets/images/rank/tuong.png', width: 22, height: 22, fit: BoxFit.contain),
+                          Image.asset(
+                            'assets/images/rank/tuong.png', 
+                            width: 28, height: 28, 
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            isAntiAlias: true,
+                          ),
                           const SizedBox(width: 4),
-                          Text("${acc['hero_count']} Tướng", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          Text("${acc['hero_count'] ?? 0} Tướng", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Image.asset('assets/images/rank/skin.png', width: 22, height: 22, fit: BoxFit.contain),
+                          Image.asset(
+                            'assets/images/rank/skin.png', 
+                            width: 28, height: 28,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            isAntiAlias: true,
+                          ),
                           const SizedBox(width: 4),
-                          Text("${acc['skin_count'] ?? 0} Skin", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          Text("${acc['skin_count'] ?? 0} Trang phục", style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
