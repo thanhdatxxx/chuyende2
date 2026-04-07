@@ -58,77 +58,75 @@ class GlassContainer extends StatelessWidget {
   }
 }
 
-class AnimatedShopName extends StatefulWidget {
+class AnimatedShopName extends StatelessWidget {
   const AnimatedShopName({super.key, this.fontSize = 22});
 
   final double fontSize;
 
   @override
-  State<AnimatedShopName> createState() => _AnimatedShopNameState();
-}
-
-class _AnimatedShopNameState extends State<AnimatedShopName>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 7),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final t = _controller.value;
-        final angle = t * 2 * math.pi;
+    final topSize = fontSize * 0.9;
+    final bottomSize = fontSize * 1.25;
+    final height = math.max(bottomSize * 2.0, 52).toDouble();
 
-        return ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment(-1 + (t * 2), -0.25),
-              end: Alignment(1 + (t * 2), 0.25),
-              transform: GradientRotation(angle * 0.15),
-              colors: const [
-                Color(0xFF7C3AED),
-                Color(0xFF06B6D4),
-                Color(0xFF22C55E),
-                Color(0xFFF43F5E),
-                Color(0xFFF59E0B),
-                Color(0xFF7C3AED),
-              ],
-            ).createShader(bounds);
-          },
-          child: Text(
-            'lienquanshopvn',
-            style: TextStyle(
-              fontSize: widget.fontSize,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-              shadows: [
-                Shadow(
-                  color: Colors.black.withValues(alpha: 0.28),
-                  blurRadius: 7,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+    return SizedBox(
+      height: height,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF7DD3FC), Color(0xFF38BDF8), Color(0xFF0284C7)],
+            ).createShader(bounds),
+            child: Text(
+              'SHOP',
+              style: TextStyle(
+                fontSize: topSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                height: 1,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-      },
+          ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFEA580C)],
+            ).createShader(bounds),
+            child: Text(
+              'LIÊN QUÂN',
+              style: TextStyle(
+                fontSize: bottomSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+                height: 1,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

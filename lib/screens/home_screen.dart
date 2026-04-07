@@ -3,7 +3,9 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
+import '../services/cache_service.dart';
 import 'payment_screen.dart';
 import '../widgets/ui_effects.dart';
 
@@ -445,154 +447,172 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAccountSections() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('accounts').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text("Lỗi tải dữ liệu"));
-        if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
+   Widget _buildAccountSections() {
+     return StreamBuilder<QuerySnapshot>(
+       stream: FirebaseFirestore.instance.collection('accounts').snapshots(),
+       builder: (context, snapshot) {
+         if (snapshot.hasError) return const Center(child: Text("Lỗi tải dữ liệu"));
 
-        final filteredDocs = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          double minInput = double.tryParse(_minPriceController.text) ?? 0;
-          double maxInput = double.tryParse(_maxPriceController.text) ?? double.maxFinite;
-          bool matchRank = selectedRank == 'Tất cả' || (data['rank'] ?? '').toString().contains(selectedRank);
-          double itemPrice = _asDouble(data['price']);
-          return matchRank && itemPrice >= minInput && itemPrice <= maxInput;
-        }).toList();
+         List<Map<String, dynamic>>? accountsData;
 
-        final availableDocs = filteredDocs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return !_isSoldStatus(data['status']);
-        }).toList();
+         // Nếu có dữ liệu từ Firebase, cache nó
+         if (snapshot.hasData && snapshot.data != null) {
+           accountsData = snapshot.data!.docs
+               .map((doc) => doc.data() as Map<String, dynamic>)
+               .toList();
+           CacheService.cacheAccounts(accountsData);
+         } else if (snapshot.connectionState == ConnectionState.waiting) {
+           // Nếu đang chờ, dùng dữ liệu cached
+           accountsData = CacheService.getCachedAccounts();
+           if (accountsData == null) {
+             return const Center(child: CircularProgressIndicator());
+           }
+         } else {
+           // Fallback về cached data
+           accountsData = CacheService.getCachedAccounts();
+           if (accountsData == null) {
+             return const Center(child: Text("Lỗi tải dữ liệu"));
+           }
+         }
 
-        final soldDocs = filteredDocs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return _isSoldStatus(data['status']);
-        }).toList();
+         final filteredDocs = accountsData.where((data) {
+           double minInput = double.tryParse(_minPriceController.text) ?? 0;
+           double maxInput = double.tryParse(_maxPriceController.text) ?? double.maxFinite;
+           bool matchRank = selectedRank == 'Tất cả' || data['rank'].toString().contains(selectedRank);
+           double itemPrice = _asDouble(data['price']);
+           return matchRank && itemPrice >= minInput && itemPrice <= maxInput;
+         }).toList();
 
-        final totalPages = availableDocs.isEmpty ? 1 : (availableDocs.length / itemsPerPage).ceil();
-        final soldTotalPages = soldDocs.isEmpty ? 1 : (soldDocs.length / soldItemsPerPage).ceil();
-        if (currentPage > totalPages) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() => currentPage = totalPages);
-            }
-          });
-        }
-        if (soldCurrentPage > soldTotalPages) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() => soldCurrentPage = soldTotalPages);
-            }
-          });
-        }
+         final availableDocs = filteredDocs.where((data) {
+           return !_isSoldStatus(data['status']);
+         }).toList();
 
-        int startIndex = (currentPage - 1) * itemsPerPage;
-        int endIndex = (startIndex + itemsPerPage > availableDocs.length) ? availableDocs.length : startIndex + itemsPerPage;
-        if (startIndex >= availableDocs.length) startIndex = 0;
-        if (endIndex < startIndex) endIndex = startIndex;
-        final displayDocs = availableDocs.sublist(startIndex, endIndex);
+         final soldDocs = filteredDocs.where((data) {
+           return _isSoldStatus(data['status']);
+         }).toList();
 
-        int soldStartIndex = (soldCurrentPage - 1) * soldItemsPerPage;
-        int soldEndIndex = (soldStartIndex + soldItemsPerPage > soldDocs.length)
-            ? soldDocs.length
-            : soldStartIndex + soldItemsPerPage;
-        if (soldStartIndex >= soldDocs.length) soldStartIndex = 0;
-        if (soldEndIndex < soldStartIndex) soldEndIndex = soldStartIndex;
-        final soldDisplayDocs = soldDocs.sublist(soldStartIndex, soldEndIndex);
+         final totalPages = availableDocs.isEmpty ? 1 : (availableDocs.length / itemsPerPage).ceil();
+         final soldTotalPages = soldDocs.isEmpty ? 1 : (soldDocs.length / soldItemsPerPage).ceil();
+         if (currentPage > totalPages) {
+           WidgetsBinding.instance.addPostFrameCallback((_) {
+             if (mounted) {
+               setState(() => currentPage = totalPages);
+             }
+           });
+         }
+         if (soldCurrentPage > soldTotalPages) {
+           WidgetsBinding.instance.addPostFrameCallback((_) {
+             if (mounted) {
+               setState(() => soldCurrentPage = soldTotalPages);
+             }
+           });
+         }
 
-        final screenWidth = MediaQuery.of(context).size.width;
-        final crossAxisCount = screenWidth >= 1450
-            ? 4
-            : screenWidth >= 1100
-            ? 3
-            : screenWidth >= 760
-            ? 2
-            : 1;
+         int startIndex = (currentPage - 1) * itemsPerPage;
+         int endIndex = (startIndex + itemsPerPage > availableDocs.length) ? availableDocs.length : startIndex + itemsPerPage;
+         if (startIndex >= availableDocs.length) startIndex = 0;
+         if (endIndex < startIndex) endIndex = startIndex;
+         final displayDocs = availableDocs.sublist(startIndex, endIndex);
 
-        // Tối ưu tỷ lệ khung hình cho mobile (crossAxisCount == 1) để tránh tràn viền
-        final childAspectRatio = screenWidth < 450
-            ? 0.94 
-            : (crossAxisCount == 1 ? 1.08 : 0.72);
+         int soldStartIndex = (soldCurrentPage - 1) * soldItemsPerPage;
+         int soldEndIndex = (soldStartIndex + soldItemsPerPage > soldDocs.length)
+             ? soldDocs.length
+             : soldStartIndex + soldItemsPerPage;
+         if (soldStartIndex >= soldDocs.length) soldStartIndex = 0;
+         if (soldEndIndex < soldStartIndex) soldEndIndex = soldStartIndex;
+         final soldDisplayDocs = soldDocs.sublist(soldStartIndex, soldEndIndex);
 
-        if (availableDocs.isEmpty && soldDocs.isEmpty) {
-          return const Center(child: Text('Không có tài khoản nào'));
-        }
+         final screenWidth = MediaQuery.of(context).size.width;
+         final crossAxisCount = screenWidth >= 1450
+             ? 4
+             : screenWidth >= 1100
+             ? 3
+             : screenWidth >= 760
+             ? 2
+             : 1;
 
-        return Column(
-          children: [
-            if (displayDocs.isNotEmpty)
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: childAspectRatio,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                ),
-                itemCount: displayDocs.length,
-                itemBuilder: (context, index) {
-                  final globalIndex = startIndex + index;
-                  return _buildAccountCard(
-                    _sanitizeAccountData(displayDocs[index].data() as Map<String, dynamic>),
-                    displayDocs[index].id,
-                    globalIndex,
-                  );
-                },
-              )
-            else
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Text('Không còn tài khoản đang bán theo bộ lọc hiện tại.'),
-              ),
-            _buildPagination(totalPages),
-            const SizedBox(height: 26),
-            if (soldDocs.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'TÀI KHOẢN ĐÃ BÁN',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade300,
-                    ),
-                  ),
-                ),
-              ),
-            if (soldDocs.isNotEmpty) const SizedBox(height: 10),
-            if (soldDocs.isNotEmpty)
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: childAspectRatio,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                ),
-                itemCount: soldDisplayDocs.length,
-                itemBuilder: (context, index) {
-                  final globalIndex = availableDocs.length + soldStartIndex + index;
-                  return _buildAccountCard(
-                    _sanitizeAccountData(soldDisplayDocs[index].data() as Map<String, dynamic>),
-                    soldDisplayDocs[index].id,
-                    globalIndex,
-                  );
-                },
-              ),
-            if (soldDocs.isNotEmpty) _buildSoldPagination(soldTotalPages),
-          ],
-        );
-      },
-    );
-  }
+         // Tối ưu tỷ lệ khung hình cho mobile (crossAxisCount == 1) để tránh tràn viền
+         final childAspectRatio = screenWidth < 450
+             ? 0.94
+             : (crossAxisCount == 1 ? 1.08 : 0.72);
+
+         if (availableDocs.isEmpty && soldDocs.isEmpty) {
+           return const Center(child: Text('Không có tài khoản nào'));
+         }
+
+         return Column(
+           children: [
+             if (displayDocs.isNotEmpty)
+               GridView.builder(
+                 shrinkWrap: true,
+                 physics: const NeverScrollableScrollPhysics(),
+                 padding: const EdgeInsets.symmetric(horizontal: 15),
+                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                   crossAxisCount: crossAxisCount,
+                   childAspectRatio: childAspectRatio,
+                   crossAxisSpacing: 15,
+                   mainAxisSpacing: 15,
+                 ),
+                 itemCount: displayDocs.length,
+                 itemBuilder: (context, index) {
+                   final globalIndex = startIndex + index;
+                   return _buildAccountCard(
+                     _sanitizeAccountData(displayDocs[index]),
+                     '',
+                     globalIndex,
+                   );
+                 },
+               )
+             else
+               const Padding(
+                 padding: EdgeInsets.symmetric(vertical: 16),
+                 child: Text('Không còn tài khoản đang bán theo bộ lọc hiện tại.'),
+               ),
+             _buildPagination(totalPages),
+             const SizedBox(height: 26),
+             if (soldDocs.isNotEmpty)
+               Padding(
+                 padding: const EdgeInsets.symmetric(horizontal: 16),
+                 child: Align(
+                   alignment: Alignment.centerLeft,
+                   child: Text(
+                     'TÀI KHOẢN ĐÃ BÁN',
+                     style: TextStyle(
+                       fontSize: 20,
+                       fontWeight: FontWeight.bold,
+                       color: Colors.orange.shade300,
+                     ),
+                   ),
+                 ),
+               ),
+             if (soldDocs.isNotEmpty) const SizedBox(height: 10),
+             if (soldDocs.isNotEmpty)
+               GridView.builder(
+                 shrinkWrap: true,
+                 physics: const NeverScrollableScrollPhysics(),
+                 padding: const EdgeInsets.symmetric(horizontal: 15),
+                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                   crossAxisCount: crossAxisCount,
+                   childAspectRatio: childAspectRatio,
+                   crossAxisSpacing: 15,
+                   mainAxisSpacing: 15,
+                 ),
+                 itemCount: soldDisplayDocs.length,
+                 itemBuilder: (context, index) {
+                   final globalIndex = availableDocs.length + soldStartIndex + index;
+                   return _buildAccountCard(
+                     _sanitizeAccountData(soldDisplayDocs[index]),
+                     '',
+                     globalIndex,
+                   );
+                 },
+               ),
+             if (soldDocs.isNotEmpty) _buildSoldPagination(soldTotalPages),
+           ],
+         );
+       },
+     );
+   }
 
   Widget _buildAccountCard(Map<String, dynamic> acc, String id, int globalIndex) {
     final displayCode = 123001 + globalIndex;
@@ -799,7 +819,21 @@ class _PreviewableNetworkImageState extends State<_PreviewableNetworkImage> {
                 trackpadScrollCausesScale: true,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(widget.imageUrl, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.imageUrl,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium,
+                    placeholder: (context, url) => const SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(),
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
@@ -828,11 +862,26 @@ class _PreviewableNetworkImageState extends State<_PreviewableNetworkImage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              widget.imageUrl,
+            CachedNetworkImage(
+              imageUrl: widget.imageUrl,
               fit: BoxFit.cover,
               filterQuality: FilterQuality.low,
-              errorBuilder: (c, e, s) => const Icon(Icons.broken_image, color: Colors.white),
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade800,
+                child: const Center(
+                  child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) => const Icon(
+                Icons.broken_image,
+                color: Colors.white,
+              ),
+              fadeInDuration: const Duration(milliseconds: 200),
+              fadeOutDuration: const Duration(milliseconds: 200),
             ),
             AnimatedOpacity(
               opacity: _isHovered ? 1 : 0,
@@ -842,7 +891,11 @@ class _PreviewableNetworkImageState extends State<_PreviewableNetworkImage> {
                 alignment: Alignment.center,
                 child: const Text(
                   'Preview',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ),
             ),

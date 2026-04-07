@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/background_music_service.dart';
+import 'services/cache_service.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -17,6 +18,7 @@ import 'widgets/ui_effects.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CacheService.initialize();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

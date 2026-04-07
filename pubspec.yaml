@@ -41,6 +41,9 @@ dependencies:
   just_audio: ^0.9.46
   url_launcher: ^6.3.2
   intl: ^0.19.0
+  cached_network_image: ^3.3.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
