@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'payment_screen.dart';
 import '../services/auth_service.dart';
@@ -12,6 +14,7 @@ class AccountDetailPage extends StatefulWidget {
 }
 
 class _AccountDetailPageState extends State<AccountDetailPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Map<String, dynamic> _account = const {};
   int _displayCode = 123001;
   String _accountDocId = '';
@@ -47,9 +50,58 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
 
   bool _isSoldStatus(String status) {
     final normalized = status.trim().toLowerCase();
-    return normalized.contains('đã bán') || normalized.contains('da ban');
+    return normalized.contains('đã bán') || normalized.contains('da ban') || normalized == 'sold';
   }
 
+  String _statusLabelVi(String rawStatus) {
+    if (_isSoldStatus(rawStatus)) return 'Đã bán';
+
+    final normalized = rawStatus.trim().toLowerCase();
+    if (normalized == 'available' || normalized == 'ready' || normalized == 'in_stock') {
+      return 'Sẵn sàng';
+    }
+    if (normalized == 'sẵn sàng' || normalized == 'san sang') return 'Sẵn sàng';
+    return 'Sẵn sàng';
+  }
+
+  List<int>? _priceBucket(double price) {
+    final value = price.toInt();
+    const buckets = <List<int>>[
+      [100000, 500000],
+      [500001, 1500000],
+      [1500001, 5000000],
+      [5000001, 10000000],
+      [10000001, 20000000],
+      [20000001, 50000000],
+    ];
+
+    for (final bucket in buckets) {
+      if (value >= bucket[0] && value <= bucket[1]) return bucket;
+    }
+    return null;
+  }
+
+  String _normalizeRankKey(String rawRank) {
+    final normalized = rawRank.trim().toLowerCase();
+    if (normalized.contains('thách đấu') || normalized.contains('thach dau')) return 'thach_dau';
+    if (normalized.contains('chiến thần') || normalized.contains('chien than')) return 'chien_than';
+    if (normalized.contains('chiến tướng') || normalized.contains('chien tuong')) return 'chien_tuong';
+    return normalized;
+  }
+
+  List<String> _fallbackRankKeys(String rawRank) {
+    final current = _normalizeRankKey(rawRank);
+    if (current == 'chien_tuong') {
+      return ['chien_tuong', 'chien_than', 'thach_dau'];
+    }
+    if (current == 'chien_than') {
+      return ['chien_than', 'thach_dau', 'chien_tuong'];
+    }
+    if (current == 'thach_dau') {
+      return ['thach_dau', 'chien_than', 'chien_tuong'];
+    }
+    return current.isEmpty ? <String>[] : <String>[current];
+  }
 
   Future<void> _handleBuyFromDetail() async {
     final auth = context.read<AuthService>();
@@ -157,21 +209,29 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            if (constraints.maxWidth > 900) {
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(flex: 3, child: _buildImageSection()),
-                                  const SizedBox(width: 30),
-                                  Expanded(flex: 2, child: _buildInfoSection()),
-                                ],
-                              );
-                            }
+                            final topContent = constraints.maxWidth > 900
+                                ? Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(flex: 3, child: _buildImageSection()),
+                                      const SizedBox(width: 30),
+                                      Expanded(flex: 2, child: _buildInfoSection()),
+                                    ],
+                                  )
+                                : Column(
+                                    children: [
+                                      _buildImageSection(),
+                                      const SizedBox(height: 30),
+                                      _buildInfoSection(),
+                                    ],
+                                  );
+
                             return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _buildImageSection(),
-                                const SizedBox(height: 30),
-                                _buildInfoSection(),
+                                topContent,
+                                const SizedBox(height: 20),
+                                _buildSuggestedAccounts(),
                               ],
                             );
                           },
@@ -324,8 +384,10 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
     final skins = _asText(_account['skin_count'], fallback: '0');
     final heroes = _asText(_account['hero_count'], fallback: '0');
     final status = _asText(_account['status'], fallback: 'Sẵn sàng');
+    final description = _asText(_account['description'], fallback: 'Chưa có mô tả');
     final price = _asDouble(_account['price']);
     final sold = _isSoldStatus(status);
+    final statusVi = _statusLabelVi(status);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,7 +405,8 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
               _buildInfoRow('Rank hiện tại:', rank, isBold: true),
               _buildInfoRow('Số lượng trang phục:', skins),
               _buildInfoRow('Số lượng tướng:', heroes),
-              _buildInfoRow('Trạng thái:', status),
+              _buildInfoRow('Trạng thái:', statusVi),
+              _buildDescriptionField('Mô tả:', description),
             ],
           ),
         ),
@@ -411,6 +474,275 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDescriptionField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 14),
+          Text(label, style: const TextStyle(fontSize: 15, color: Color(0xFF64748B))),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _extractDisplayCode(Map<String, dynamic> account, int fallback) {
+    final raw = account['id'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw?.toString() ?? '') ?? fallback;
+  }
+
+  void _openSuggestedAccount(String docId, Map<String, dynamic> rawAccount, int fallbackCode) {
+    final safeData = Map<String, dynamic>.from(rawAccount);
+    safeData.remove('taikhoan');
+    safeData.remove('matkhau');
+
+    Navigator.pushReplacementNamed(
+      context,
+      '/detail',
+      arguments: {
+        'docId': docId,
+        'displayCode': _extractDisplayCode(safeData, fallbackCode),
+        'account': safeData,
+      },
+    );
+  }
+
+  Widget _buildSuggestedAccounts() {
+    final currentPrice = _asDouble(_account['price']);
+    final bucket = _priceBucket(currentPrice);
+    final currentRank = _asText(_account['rank'], fallback: '');
+    final rankFallbackKeys = _fallbackRankKeys(currentRank);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Đề xuất 5 tài khoản khác',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Giữ chuột và kéo ngang sang phải để xem thêm',
+            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 12),
+          StreamBuilder<QuerySnapshot>(
+            stream: _firestore.collection('accounts').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Không thể tải danh sách đề xuất.'),
+                );
+              }
+
+              final docs = snapshot.data?.docs ?? <QueryDocumentSnapshot>[];
+              final activeCandidates = docs
+                  .where((doc) => doc.id != _accountDocId)
+                  .map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return {'docId': doc.id, 'data': data};
+                  })
+                  .where((item) {
+                    final data = item['data'] as Map<String, dynamic>;
+                    final status = _asText(data['status'], fallback: '');
+                    if (_isSoldStatus(status)) return false;
+                    return true;
+                  })
+                  .toList();
+
+              final bucketCandidates = activeCandidates.where((item) {
+                if (bucket == null) return false;
+                final data = item['data'] as Map<String, dynamic>;
+                final price = _asDouble(data['price']);
+                return price >= bucket[0] && price <= bucket[1];
+              }).toList();
+
+              List<Map<String, Object>> candidates;
+              if (bucketCandidates.isNotEmpty) {
+                candidates = bucketCandidates.cast<Map<String, Object>>();
+                candidates.sort((a, b) {
+                  final dataA = a['data'] as Map<String, dynamic>;
+                  final dataB = b['data'] as Map<String, dynamic>;
+                  final distanceA = (_asDouble(dataA['price']) - currentPrice).abs();
+                  final distanceB = (_asDouble(dataB['price']) - currentPrice).abs();
+                  return distanceA.compareTo(distanceB);
+                });
+              } else {
+                candidates = activeCandidates
+                    .where((item) {
+                      if (rankFallbackKeys.isEmpty) return false;
+                      final data = item['data'] as Map<String, dynamic>;
+                      final rankKey = _normalizeRankKey(_asText(data['rank'], fallback: ''));
+                      return rankFallbackKeys.contains(rankKey);
+                    })
+                    .map((item) => Map<String, Object>.from(item))
+                    .toList();
+
+                candidates.sort((a, b) {
+                  final dataA = a['data'] as Map<String, dynamic>;
+                  final dataB = b['data'] as Map<String, dynamic>;
+                  final rankA = _normalizeRankKey(_asText(dataA['rank'], fallback: ''));
+                  final rankB = _normalizeRankKey(_asText(dataB['rank'], fallback: ''));
+                  final rankIndexA = rankFallbackKeys.indexOf(rankA);
+                  final rankIndexB = rankFallbackKeys.indexOf(rankB);
+
+                  if (rankIndexA != rankIndexB) {
+                    final safeA = rankIndexA == -1 ? 999 : rankIndexA;
+                    final safeB = rankIndexB == -1 ? 999 : rankIndexB;
+                    return safeA.compareTo(safeB);
+                  }
+
+                  final distanceA = (_asDouble(dataA['price']) - currentPrice).abs();
+                  final distanceB = (_asDouble(dataB['price']) - currentPrice).abs();
+                  return distanceA.compareTo(distanceB);
+                });
+              }
+
+              final suggestions = candidates.take(5).toList();
+              if (suggestions.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Hiện chưa có tài khoản đề xuất.'),
+                );
+              }
+
+              const spacing = 12.0;
+              const cardWidth = 240.0;
+
+              return ScrollConfiguration(
+                behavior: const MaterialScrollBehavior().copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                    PointerDeviceKind.stylus,
+                    PointerDeviceKind.unknown,
+                  },
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(suggestions.length, (index) {
+                    final item = suggestions[index];
+                    final docId = item['docId'] as String;
+                    final data = Map<String, dynamic>.from(item['data'] as Map<String, dynamic>);
+                    final rank = _asText(data['rank']);
+                    final heroes = _asText(data['hero_count'], fallback: '0');
+                    final skins = _asText(data['skin_count'], fallback: '0');
+                    final price = _asDouble(data['price']);
+                    final status = _asText(data['status'], fallback: 'Sẵn sàng');
+                    final sold = _isSoldStatus(status);
+                    final statusVi = _statusLabelVi(status);
+                    final imageUrl = _asText(data['image_url'], fallback: '');
+
+                    return Padding(
+                      padding: EdgeInsets.only(right: index == suggestions.length - 1 ? 0 : spacing),
+                      child: SizedBox(
+                        width: cardWidth,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _openSuggestedAccount(docId, data, 123001 + index),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    height: 128,
+                                    width: double.infinity,
+                                    color: const Color(0xFF0F172A),
+                                    child: imageUrl.isEmpty
+                                        ? const Icon(Icons.broken_image, color: Colors.white70, size: 32)
+                                        : Image.network(
+                                            imageUrl,
+                                            fit: BoxFit.cover,
+                                            filterQuality: FilterQuality.low,
+                                            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white70, size: 32),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Acc #${_extractDisplayCode(data, 123001 + index)} - $rank',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Tướng: $heroes | Skin: $skins',
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+                                ),
+                                Text(
+                                  '${price.toInt()}đ',
+                                  style: const TextStyle(fontSize: 14, color: Color(0xFFF97316), fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        statusVi,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: sold ? Colors.red.shade600 : Colors.green.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    OutlinedButton(
+                                      onPressed: () => _openSuggestedAccount(docId, data, 123001 + index),
+                                      child: const Text('Xem'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                    }),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

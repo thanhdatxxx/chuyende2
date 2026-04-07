@@ -16,6 +16,10 @@ class _DetailUserPageState extends State<DetailUserPage> {
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  static const Color _bronzeTitle = Color(0xFFFFD8A8);
+  static const Color _bronzeLabel = Color(0xFFF6C78B);
+  static const Color _bronzeValue = Color(0xFFFFF2E1);
+  static const Color _bronzeMuted = Color(0xFFE7B97A);
   int _activityPage = 1;
   static const int _activityPerPage = 8;
   
@@ -293,7 +297,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: _bronzeTitle,
                 ),
               ),
               const SizedBox(height: 20),
@@ -322,7 +326,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF64748B),
+            color: _bronzeLabel,
           ),
         ),
         const SizedBox(height: 8),
@@ -338,7 +342,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Colors.black87,
+              color: _bronzeValue,
             ),
           ),
         ),
@@ -369,7 +373,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _bronzeTitle,
             ),
           ),
           const SizedBox(height: 20),
@@ -425,7 +429,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF64748B),
+            color: _bronzeLabel,
           ),
         ),
         const SizedBox(height: 8),
@@ -580,7 +584,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: _bronzeTitle,
             ),
           ),
           const SizedBox(height: 20),
@@ -607,7 +611,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                     'Nội Dung',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _bronzeTitle,
                       fontSize: 14,
                     ),
                   ),
@@ -618,7 +622,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                     'Thời Gian',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _bronzeTitle,
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
@@ -630,7 +634,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                     'Loại',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: _bronzeTitle,
                       fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
@@ -644,7 +648,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
               if (!auth.isLoggedIn) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Text('Vui lòng đăng nhập để xem nhật ký.'),
+                  child: Text('Vui lòng đăng nhập để xem nhật ký.', style: TextStyle(color: _bronzeValue)),
                 );
               }
 
@@ -663,7 +667,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                   if (snapshot.hasError) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Text('Không thể tải nhật ký hoạt động.'),
+                      child: Text('Không thể tải nhật ký hoạt động.', style: TextStyle(color: _bronzeValue)),
                     );
                   }
 
@@ -707,7 +711,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                         child: pageItems.isEmpty
                             ? const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 18),
-                                child: Center(child: Text('Chưa có hoạt động nào.')),
+                                child: Center(child: Text('Chưa có hoạt động nào.', style: TextStyle(color: _bronzeValue))),
                               )
                             : ListView.builder(
                                 shrinkWrap: true,
@@ -729,14 +733,14 @@ class _DetailUserPageState extends State<DetailUserPage> {
                                           flex: 2,
                                           child: Text(
                                             _activityTitle(data),
-                                            style: const TextStyle(color: Colors.black87, fontSize: 13),
+                                            style: const TextStyle(color: _bronzeValue, fontSize: 13),
                                           ),
                                         ),
                                         Expanded(
                                           flex: 1,
                                           child: Text(
                                             _formatDateTime(data['created_at'] as Timestamp?),
-                                            style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                            style: const TextStyle(color: _bronzeMuted, fontSize: 13),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
@@ -744,7 +748,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
                                           flex: 1,
                                           child: Text(
                                             type,
-                                            style: const TextStyle(color: Colors.grey, fontSize: 13),
+                                            style: const TextStyle(color: _bronzeMuted, fontSize: 13),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
@@ -764,11 +768,11 @@ class _DetailUserPageState extends State<DetailUserPage> {
                             total == 0
                                 ? 'Hiển thị từ 0 đến 0 trong tổng số 0 kết quả'
                                 : 'Hiển thị từ ${start + 1} đến $end trong tổng số $total kết quả',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            style: const TextStyle(fontSize: 12, color: _bronzeMuted),
                           ),
                           Text(
                             'Mỗi trang: $_activityPerPage',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            style: const TextStyle(fontSize: 12, color: _bronzeMuted),
                           ),
                         ],
                       ),
