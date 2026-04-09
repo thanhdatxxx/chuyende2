@@ -185,70 +185,45 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.78,
-                filterQuality: FilterQuality.low,
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildTopMenu(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 1200),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final topContent = constraints.maxWidth > 900
-                                ? Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(flex: 3, child: _buildImageSection()),
-                                      const SizedBox(width: 30),
-                                      Expanded(flex: 2, child: _buildInfoSection()),
-                                    ],
-                                  )
-                                : Column(
-                                    children: [
-                                      _buildImageSection(),
-                                      const SizedBox(height: 30),
-                                      _buildInfoSection(),
-                                    ],
-                                  );
+    return EffectPageScaffold(
+      backgroundOpacity: 0.78,
+      topMenu: _buildTopMenu(),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final topContent = constraints.maxWidth > 900
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 3, child: _buildImageSection()),
+                          const SizedBox(width: 30),
+                          Expanded(flex: 2, child: _buildInfoSection()),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          _buildImageSection(),
+                          const SizedBox(height: 30),
+                          _buildInfoSection(),
+                        ],
+                      );
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                topContent,
-                                const SizedBox(height: 20),
-                                _buildSuggestedAccounts(),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    topContent,
+                    const SizedBox(height: 20),
+                    _buildSuggestedAccounts(),
+                  ],
+                );
+              },
             ),
           ),
-          const Positioned(
-            top: 14,
-            right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
-          ),
-        ],
+        ),
       ),
     );
   }
