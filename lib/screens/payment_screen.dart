@@ -175,7 +175,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                       child: Container(
                         constraints: const BoxConstraints(maxWidth: 760),
                         padding: const EdgeInsets.all(24),
-                        // # Container hiệu ứng kính mờ (Glassmorphism)
+                        // # Contaner hiệu ứng kính mờ (Glassmorphism)
                         child: GlassContainer(
                           borderRadius: 20,
                           padding: const EdgeInsets.all(22),
