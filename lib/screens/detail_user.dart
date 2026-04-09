@@ -78,81 +78,56 @@ class _DetailUserPageState extends State<DetailUserPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.82,
-                filterQuality: FilterQuality.low,
-              ),
-            ),
+    return EffectPageScaffold(
+      backgroundOpacity: 0.82,
+      topMenu: _buildTopMenu(),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                _buildTopMenu(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 1400),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                if (constraints.maxWidth > 900) {
-                                  return Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 1,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(right: 15),
-                                          child: _buildAccountInfo(),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 1,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(left: 15),
-                                          child: _buildChangePassword(),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                } else {
-                                  return Column(
-                                    children: [
-                                      _buildAccountInfo(),
-                                      const SizedBox(height: 20),
-                                      _buildChangePassword(),
-                                    ],
-                                  );
-                                }
-                              },
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth > 900) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 15),
+                              child: _buildAccountInfo(),
                             ),
-                            const SizedBox(height: 30),
-                            _buildActivityLog(),
-                            const SizedBox(height: 50),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 15),
+                              child: _buildChangePassword(),
+                            ),
+                          ),
+                        ],
+                      );
+                    } else {
+                      return Column(
+                        children: [
+                          _buildAccountInfo(),
+                          const SizedBox(height: 20),
+                          _buildChangePassword(),
+                        ],
+                      );
+                    }
+                  },
                 ),
+                const SizedBox(height: 30),
+                _buildActivityLog(),
+                const SizedBox(height: 50),
               ],
             ),
           ),
-          const Positioned(
-            top: 14,
-            right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
-          ),
-        ],
+        ),
       ),
     );
   }

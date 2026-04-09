@@ -156,40 +156,15 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.78,
-                filterQuality: FilterQuality.low,
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildTopMenu(),
-                Expanded(
-                  child: Center(
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                      child: _buildContent(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Positioned(
-            top: 14,
-            right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
-          ),
-        ],
+    return EffectPageScaffold(
+      backgroundOpacity: 0.78,
+      topMenu: _buildTopMenu(),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: _buildContent(),
+        ),
       ),
     );
   }

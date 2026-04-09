@@ -58,6 +58,51 @@ class GlassContainer extends StatelessWidget {
   }
 }
 
+class EffectPageScaffold extends StatelessWidget {
+  const EffectPageScaffold({
+    super.key,
+    required this.topMenu,
+    required this.body,
+    this.backgroundOpacity = 0.8,
+  });
+
+  final Widget topMenu;
+  final Widget body;
+  final double backgroundOpacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
+                fit: BoxFit.cover,
+                opacity: backgroundOpacity,
+                filterQuality: FilterQuality.low,
+              ),
+            ),
+            child: Column(
+              children: [
+                topMenu,
+                Expanded(child: body),
+              ],
+            ),
+          ),
+          const Positioned(
+            top: 14,
+            right: 14,
+            child: SafeArea(child: FloatingMusicButton()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class AnimatedShopName extends StatelessWidget {
   const AnimatedShopName({super.key, this.fontSize = 22});
 
