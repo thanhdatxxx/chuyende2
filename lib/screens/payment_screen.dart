@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/purchase_service.dart';
 import '../widgets/ui_effects.dart';
 
+// # Lớp chứa các tham số truyền vào luồng thanh toán
 class PaymentFlowArgs {
   const PaymentFlowArgs({
     required this.accountId,
@@ -17,14 +17,15 @@ class PaymentFlowArgs {
     this.skinCount,
   });
 
-  final String accountId;
-  final int displayCode;
-  final double price;
-  final String? rank;
-  final String? heroCount;
-  final String? skinCount;
+  final String accountId;    // # ID định danh nick
+  final int displayCode;     // # Mã hiển thị công khai (MS 1234)
+  final double price;        // # Giá tiền của nick
+  final String? rank;        // # Cấp bậc rank
+  final String? heroCount;   // # Số lượng tướng
+  final String? skinCount;   // # Số lượng trang phục
 }
 
+// # Màn hình xác nhận thanh toán (Checkout)
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
 
@@ -34,18 +35,21 @@ class PaymentCheckoutScreen extends StatefulWidget {
 
 class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   final PurchaseService _purchaseService = PurchaseService();
-  bool _isPaying = false;
+  bool _isPaying = false; // # Trạng thái đang xử lý giao dịch
 
+  // # Hàm định dạng tiền tệ sang chuẩn Việt Nam
   String _formatMoney(double amount) {
     final digits = amount.toInt().toString();
     final withSeparator = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
     return '$withSeparator đ';
   }
 
+  // # Hàm xử lý logic thanh toán chính
   Future<void> _startPayment(PaymentFlowArgs args) async {
-    if (_isPaying) return;
+    if (_isPaying) return; // # Chặn nhấn nhiều lần
     final auth = context.read<AuthService>();
 
+    // # Kiểm tra xem người dùng đã đăng nhập chưa
     if (!auth.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng đăng nhập để thanh toán!')),
@@ -56,6 +60,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     setState(() => _isPaying = true);
 
     try {
+      // # 1. Gọi API thực hiện giao dịch mua nick
       final result = await _purchaseService.purchaseAccount(
         userName: auth.userName,
         accountId: args.accountId,
@@ -63,11 +68,13 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         price: args.price,
       );
 
+      // # 2. Cập nhật lại số dư ví người dùng trong ứng dụng
       auth.updateMoney(balance: result.newBalance);
 
       String acc = '-';
       String pass = '-';
       try {
+        // # 3. Lấy thông tin tài khoản/mật khẩu thực tế của nick
         final creds = await _purchaseService.getTransactionCredentials(
           historyId: result.historyId,
           currentUserName: auth.userName,
@@ -75,10 +82,11 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         acc = creds['taikhoan'] ?? '-';
         pass = creds['matkhau'] ?? '-';
       } catch (_) {
-        // Keep fallback values if credentials are not available.
+        // # Fallback nếu có lỗi khi lấy credentials
       }
 
       if (!mounted) return;
+      // # 4. Chuyển sang màn hình thông báo mua thành công
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -92,6 +100,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       );
     } on StateError catch (error) {
       if (!mounted) return;
+      // # Xử lý các lỗi nghiệp vụ (hết tiền, nick đã bán)
       if (error.message == 'INSUFFICIENT_BALANCE') {
         final goTopup = await showDialog<bool>(
           context: context,
@@ -104,7 +113,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             ],
           ),
         );
-        if (goTopup == true) {
+        if (goTopup == true && mounted) {
           Navigator.pushNamed(context, '/bank-atm');
         }
       } else if (error.message == 'ACCOUNT_SOLD') {
@@ -130,6 +139,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // # Lấy tham số được truyền từ màn hình Detail
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is! PaymentFlowArgs) {
       return Scaffold(
@@ -146,6 +156,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
+          // # Nền ứng dụng với ảnh game và hiệu ứng mờ
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
@@ -157,13 +168,14 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             ),
             child: Column(
               children: [
-                _buildTopMenu(context),
+                _buildTopMenu(context), // # Menu điều hướng bên trên
                 Expanded(
                   child: SingleChildScrollView(
                     child: Center(
                       child: Container(
                         constraints: const BoxConstraints(maxWidth: 760),
                         padding: const EdgeInsets.all(24),
+                        // # Container hiệu ứng kính mờ (Glassmorphism)
                         child: GlassContainer(
                           borderRadius: 20,
                           padding: const EdgeInsets.all(22),
@@ -225,13 +237,14 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const Positioned(
             top: 14,
             right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
+            child: SafeArea(child: FloatingMusicButton()), // # Nút điều khiển nhạc
           ),
         ],
       ),
     );
   }
 
+  // # Hiển thị một dòng thông tin chi tiết nick
   Widget _infoRow(String label, String value, {bool highlight = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -251,6 +264,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
+  // # Xây dựng menu trên cùng (Logo và các nút chức năng)
   Widget _buildTopMenu(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -284,7 +298,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                             const SizedBox(width: 25),
                             HoverMenuItem(title: 'Lịch sử giao dịch', icon: Icons.history, onTap: () => Navigator.pushNamed(context, '/history')),
                             const SizedBox(width: 25),
-                            const DepositMenuButton(),
+                            const DepositMenuButton(), // # Nút Nạp tiền
                           ],
                         );
                       },
@@ -300,6 +314,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   }
 }
 
+// # Màn hình thông báo thanh toán thành công hoàn tất
 class PaymentSuccessScreen extends StatelessWidget {
   const PaymentSuccessScreen({
     super.key,
@@ -309,10 +324,10 @@ class PaymentSuccessScreen extends StatelessWidget {
     required this.password,
   });
 
-  final String orderId;
-  final String gameNick;
-  final String account;
-  final String password;
+  final String orderId;   // # Mã đơn hàng
+  final String gameNick;  // # Mã số nick game
+  final String account;   // # Tài khoản game thực
+  final String password;  // # Mật khẩu game thực
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +367,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                               const SizedBox(height: 18),
                               _row(context, 'Mã giao dịch', orderId),
                               _row(context, 'Nick game', gameNick),
+                              // # Dòng thông tin tài khoản và mật khẩu nick game
                               _row(context, 'Tài khoản', account, copyable: true),
                               _row(context, 'Mật khẩu', password, copyable: true),
                               const SizedBox(height: 20),
@@ -387,6 +403,7 @@ class PaymentSuccessScreen extends StatelessWidget {
     );
   }
 
+  // # Hiển thị dòng thông tin có hỗ trợ sao chép nhanh
   Widget _row(BuildContext context, String label, String value, {bool copyable = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -401,6 +418,7 @@ class PaymentSuccessScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () {
+                    // # Sao chép vào bộ nhớ tạm (Clipboard)
                     Clipboard.setData(ClipboardData(text: value));
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã sao chép')));
                   },
