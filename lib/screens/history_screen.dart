@@ -5,27 +5,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
 
-// Animation mixin for list items
-mixin _AnimationMixin {
-  late AnimationController animationController;
-  late Animation<double> fadeInAnimation;
-  late Animation<Offset> slideAnimation;
-
-  void initializeAnimations(TickerProvider vsync, int index) {
-    animationController = AnimationController(
-      duration: Duration(milliseconds: 400 + (index * 50)),
-      vsync: vsync,
-    );
-    fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: animationController, curve: Curves.easeIn),
-    );
-    slideAnimation = Tween<Offset>(begin: const Offset(0.3, 0.0), end: Offset.zero).animate(
-      CurvedAnimation(parent: animationController, curve: Curves.easeOut),
-    );
-    animationController.forward();
-  }
-}
-
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -33,7 +12,7 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateMixin {
+class _HistoryScreenState extends State<HistoryScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   double _asDouble(dynamic value) {
@@ -249,32 +228,28 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                           final soldData = soldMap[accountId];
                                           final statusText = (soldData?['status'] ?? 'Đã bán').toString();
 
-                                          return _AnimatedHistoryItem(
-                                            vsync: this,
-                                            index: index,
-                                            child: ListTile(
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                              title: Text(
-                                                'Mã giao dịch #${item['transaction_code']} - Nick #${item['account_code']}',
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                              ),
-                                              subtitle: Text(
-                                                'Giá: ${_formatMoney(item['amount'] as double)} | Thời gian: ${_formatDate(item['created_at'] as Timestamp?)} | Trạng thái: $statusText',
-                                              ),
-                                              trailing: (item['from_history'] == true && (item['history_id'] as String).isNotEmpty)
-                                                  ? ElevatedButton(
-                                                onPressed: () => _showTransactionDetail(
-                                                  item['history_id'] as String,
-                                                  item['account_code'],
-                                                ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: const Color(0xFFF97316),
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                child: const Text('Xem chi tiết giao dịch'),
-                                              )
-                                                  : const Text('Dữ liệu bổ sung', style: TextStyle(fontSize: 12)),
+                                          return ListTile(
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                            title: Text(
+                                              'Mã giao dịch #${item['transaction_code']} - Nick #${item['account_code']}',
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
                                             ),
+                                            subtitle: Text(
+                                              'Giá: ${_formatMoney(item['amount'] as double)} | Thời gian: ${_formatDate(item['created_at'] as Timestamp?)} | Trạng thái: $statusText',
+                                            ),
+                                            trailing: (item['from_history'] == true && (item['history_id'] as String).isNotEmpty)
+                                                ? ElevatedButton(
+                                              onPressed: () => _showTransactionDetail(
+                                                item['history_id'] as String,
+                                                item['account_code'],
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(0xFFF97316),
+                                                foregroundColor: Colors.white,
+                                              ),
+                                              child: const Text('Xem chi tiết giao dịch'),
+                                            )
+                                                : const Text('Dữ liệu bổ sung', style: TextStyle(fontSize: 12)),
                                           );
                                         },
                                       ),
@@ -427,115 +402,3 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
   }
 }
 
-// Animated History Item Widget
-class _AnimatedHistoryItem extends StatefulWidget {
-  final TickerProvider vsync;
-  final int index;
-  final Widget child;
-
-  const _AnimatedHistoryItem({
-    required this.vsync,
-    required this.index,
-    required this.child,
-  });
-
-  @override
-  State<_AnimatedHistoryItem> createState() => _AnimatedHistoryItemState();
-}
-
-class _AnimatedHistoryItemState extends State<_AnimatedHistoryItem> with _AnimationMixin {
-  @override
-  void initState() {
-    super.initState();
-    initializeAnimations(widget.vsync, widget.index);
-  }
-
-  @override
-  void dispose() {
-    animationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: fadeInAnimation,
-      child: SlideTransition(
-        position: slideAnimation,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-// Enhanced Empty History Box with Animation
-class _AnimatedEmptyBox extends StatefulWidget {
-  final String title;
-  final bool isMobile;
-
-  const _AnimatedEmptyBox({
-    required this.title,
-    required this.isMobile,
-  });
-
-  @override
-  State<_AnimatedEmptyBox> createState() => _AnimatedEmptyBoxState();
-}
-
-class _AnimatedEmptyBoxState extends State<_AnimatedEmptyBox> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Container(
-        width: double.infinity,
-        height: widget.isMobile ? 260 : 330,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.82),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.7)),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                widget.title,
-                style: TextStyle(
-                  fontSize: widget.isMobile ? 20 : 28,
-                  color: Colors.brown.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 14),
-              Icon(Icons.history_toggle_off, size: widget.isMobile ? 68 : 86, color: Colors.orange.shade400),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
