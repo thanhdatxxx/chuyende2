@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
+import '../widgets/home_footer.dart';
 
 // Animation mixin for list items
 mixin _AnimationMixin {
@@ -289,6 +290,8 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                     ),
                   ),
                 ),
+                const SizedBox(height: 50),
+                const HomeFooter(),
               ],
             ),
           ),
