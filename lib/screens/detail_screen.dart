@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'payment_screen.dart';
 import '../services/auth_service.dart';
+import '../widgets/home_footer.dart';
 import '../widgets/ui_effects.dart';
 
 class AccountDetailPage extends StatefulWidget {
@@ -189,40 +190,46 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
       backgroundOpacity: 0.78,
       topMenu: _buildTopMenu(),
       body: SingleChildScrollView(
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final topContent = constraints.maxWidth > 900
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 3, child: _buildImageSection()),
-                          const SizedBox(width: 30),
-                          Expanded(flex: 2, child: _buildInfoSection()),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          _buildImageSection(),
-                          const SizedBox(height: 30),
-                          _buildInfoSection(),
-                        ],
-                      );
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final topContent = constraints.maxWidth > 900
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 3, child: _buildImageSection()),
+                              const SizedBox(width: 30),
+                              Expanded(flex: 2, child: _buildInfoSection()),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              _buildImageSection(),
+                              const SizedBox(height: 30),
+                              _buildInfoSection(),
+                            ],
+                          );
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    topContent,
-                    const SizedBox(height: 20),
-                    _buildSuggestedAccounts(),
-                  ],
-                );
-              },
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        topContent,
+                        const SizedBox(height: 20),
+                        _buildSuggestedAccounts(),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 30),
+            const HomeFooter(),
+          ],
         ),
       ),
     );

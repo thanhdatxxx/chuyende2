@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/home_footer.dart';
 import '../widgets/ui_effects.dart';
 
 class DetailUserPage extends StatefulWidget {
@@ -82,51 +83,56 @@ class _DetailUserPageState extends State<DetailUserPage> {
       backgroundOpacity: 0.82,
       topMenu: _buildTopMenu(),
       body: SingleChildScrollView(
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth > 900) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 1,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 15),
-                              child: _buildAccountInfo(),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 15),
-                              child: _buildChangePassword(),
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Column(
-                        children: [
-                          _buildAccountInfo(),
-                          const SizedBox(height: 20),
-                          _buildChangePassword(),
-                        ],
-                      );
-                    }
-                  },
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1400),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth > 900) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 1,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 15),
+                                  child: _buildAccountInfo(),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 15),
+                                  child: _buildChangePassword(),
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          return Column(
+                            children: [
+                              _buildAccountInfo(),
+                              const SizedBox(height: 20),
+                              _buildChangePassword(),
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                    _buildActivityLog(),
+                    const SizedBox(height: 50),
+                  ],
                 ),
-                const SizedBox(height: 30),
-                _buildActivityLog(),
-                const SizedBox(height: 50),
-              ],
+              ),
             ),
-          ),
+            const HomeFooter(),
+          ],
         ),
       ),
     );
