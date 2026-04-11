@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Truy vấn theo collection 'user' và trường 'user_name', 'pass' như trong ảnh
+      // Truy vấn theo collection 'user' và trường 'user_name', 'pass'
       var userQuery = await _firestore
           .collection('user')
           .where('user_name', isEqualTo: _uLogin.text.trim())
@@ -56,6 +56,9 @@ class _LoginPageState extends State<LoginPage> {
         String userId = (userData['user_id'] ?? doc.id).toString();
         final depositedMoney = _asDouble(userData['deposited_money']);
         final balance = userData.containsKey('balance') ? _asDouble(userData['balance']) : depositedMoney;
+        
+        // Kiểm tra quyền admin từ trường 'role' trong Firestore
+        bool isAdminRole = userData['role'] == 'admin';
 
         // Cập nhật trạng thái đăng nhập qua Provider
         if (!mounted) return;
@@ -65,6 +68,7 @@ class _LoginPageState extends State<LoginPage> {
           userId: userId,
           balance: balance,
           depositedMoney: depositedMoney,
+          isAdmin: isAdminRole,
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -318,7 +322,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
     try {
-      // Lưu vào collection 'user' theo đúng cấu trúc ảnh bạn gửi
+      // Lưu vào collection 'user' theo đúng cấu trúc
       await _firestore.collection('user').add({
         'full_name': _fullNameReg.text.trim(),
         'email': _emailReg.text.trim(),
@@ -338,6 +342,7 @@ class _RegisterPageState extends State<RegisterPage> {
         userId: _uReg.text.trim(),
         balance: 0,
         depositedMoney: 0,
+        isAdmin: false,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/background_music_service.dart';
+import '../services/auth_service.dart';
 
 class GlassContainer extends StatelessWidget {
   const GlassContainer({
@@ -38,7 +39,6 @@ class GlassContainer extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: ClipRect(
-          // Keep blur strictly inside the rounded border.
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
@@ -254,38 +254,97 @@ class _HoverMenuItemState extends State<HoverMenuItem> {
   }
 }
 
-class FloatingMusicButton extends StatelessWidget {
-  const FloatingMusicButton({super.key});
+class UserMenuButton extends StatefulWidget {
+  final AuthService auth;
+  const UserMenuButton({super.key, required this.auth});
+
+  @override
+  State<UserMenuButton> createState() => _UserMenuButtonState();
+}
+
+class _UserMenuButtonState extends State<UserMenuButton> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<BackgroundMusicService>(
-      builder: (context, music, _) {
-        return Tooltip(
-          message: music.isPlaying ? 'Tắt nhạc nền' : 'Bật nhạc nền',
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: PopupMenuButton<String>(
+        position: PopupMenuPosition.under,
+        offset: const Offset(0, 10),
+        color: Colors.white.withValues(alpha: 0.16),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+        ),
+        onSelected: (value) {
+          if (value == 'info') {
+            Navigator.pushNamed(context, '/user-detail');
+          } else if (value == 'logout') {
+            widget.auth.logout();
+          } else if (value == 'admin') {
+            Navigator.pushNamed(context, '/admin-accounts');
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: _isHovered 
+                ? Colors.white.withValues(alpha: 0.22) 
+                : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _isHovered 
+                  ? const Color(0xFFF97316).withValues(alpha: 0.95) 
+                  : Colors.white.withValues(alpha: 0.28)
             ),
-            child: IconButton(
-              onPressed: music.toggle,
-              icon: Icon(
-                music.isPlaying ? Icons.album : Icons.album_outlined,
-                color: const Color(0xFFF97316),
+            boxShadow: [
+              BoxShadow(
+                color: (_isHovered ? const Color(0xFFF97316) : Colors.black).withValues(alpha: _isHovered ? 0.35 : 0.18),
+                blurRadius: _isHovered ? 12 : 6,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
           ),
-        );
-      },
+          transform: Matrix4.translationValues(0, _isHovered ? -1.2 : 0, 0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.account_circle, size: 18, color: Color(0xFFF97316)),
+              const SizedBox(width: 6),
+              Text(
+                widget.auth.userName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _isHovered ? Colors.white : const Color(0xFFFFF7ED),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.arrow_drop_down, color: _isHovered ? Colors.white : const Color(0xFFFFF7ED), size: 18),
+            ],
+          ),
+        ),
+        itemBuilder: (context) => [
+          if (widget.auth.isAdmin)
+            const PopupMenuItem<String>(
+              value: 'admin',
+              child: Text('Quản lý tài khoản', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+            ),
+          PopupMenuItem<String>(
+            value: 'info',
+            child: const Text('Thông tin', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
+          ),
+          PopupMenuItem<String>(
+            value: 'logout',
+            child: const Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -349,6 +408,42 @@ class DepositMenuButton extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class FloatingMusicButton extends StatelessWidget {
+  const FloatingMusicButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<BackgroundMusicService>(
+      builder: (context, music, _) {
+        return Tooltip(
+          message: music.isPlaying ? 'Tắt nhạc nền' : 'Bật nhạc nền',
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: music.toggle,
+              icon: Icon(
+                music.isPlaying ? Icons.album : Icons.album_outlined,
+                color: const Color(0xFFF97316),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -560,5 +655,3 @@ class _ContactRoundButton extends StatelessWidget {
     );
   }
 }
-
-

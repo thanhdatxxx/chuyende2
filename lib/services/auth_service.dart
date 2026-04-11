@@ -7,6 +7,7 @@ class AuthService with ChangeNotifier {
   String _userId = ""; // user_id/doc id
   double _balance = 0;
   double _depositedMoney = 0;
+  bool _isAdmin = false;
 
   bool get isLoggedIn => _isLoggedIn;
   String get userName => _userName;
@@ -14,6 +15,7 @@ class AuthService with ChangeNotifier {
   String get userId => _userId;
   double get balance => _balance;
   double get depositedMoney => _depositedMoney;
+  bool get isAdmin => _isAdmin;
 
   void login({
     required String userName,
@@ -21,6 +23,7 @@ class AuthService with ChangeNotifier {
     String userId = "",
     double balance = 0,
     double depositedMoney = 0,
+    bool isAdmin = false,
   }) {
     _isLoggedIn = true;
     _userName = userName;
@@ -28,6 +31,7 @@ class AuthService with ChangeNotifier {
     _userId = userId;
     _balance = balance;
     _depositedMoney = depositedMoney;
+    _isAdmin = isAdmin || userName.toLowerCase() == 'admin'; // Auto admin if username is admin
     notifyListeners();
   }
 
@@ -46,7 +50,7 @@ class AuthService with ChangeNotifier {
     _userId = "";
     _balance = 0;
     _depositedMoney = 0;
+    _isAdmin = false;
     notifyListeners();
   }
 }
-

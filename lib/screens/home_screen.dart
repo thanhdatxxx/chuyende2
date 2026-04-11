@@ -126,29 +126,16 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return Row(children: [
           _buildMenuItem('Trang chủ', Icons.home, () {}),
-          const SizedBox(width: 20),
-          _buildMenuItem('Lịch sử', Icons.history, () => Navigator.pushNamed(context, '/history')),
-          const SizedBox(width: 20),
-          const DepositMenuButton(),
+          if (!auth.isAdmin) ...[
+            const SizedBox(width: 20),
+            _buildMenuItem('Lịch sử', Icons.history, () => Navigator.pushNamed(context, '/history')),
+            const SizedBox(width: 20),
+            const DepositMenuButton(),
+          ],
           const SizedBox(width: 30),
-          Text(auth.userName, style: const TextStyle(fontWeight: FontWeight.w600, color: AppStyles.textColorPrimary)),
-          const SizedBox(width: 10),
-          _buildUserDropdown(auth),
+          UserMenuButton(auth: auth),
         ]);
       },
-    );
-  }
-
-  Widget _buildUserDropdown(AuthService auth) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppStyles.glassBorderColor)),
-      child: PopupMenuButton(
-        icon: const Icon(Icons.account_circle, color: AppStyles.primaryColor, size: 30),
-        itemBuilder: (ctx) => [
-          PopupMenuItem(child: const Text('Thông tin'), onTap: () => Navigator.pushNamed(context, '/user-detail')),
-          PopupMenuItem(child: const Text('Đăng xuất'), onTap: () => auth.logout()),
-        ],
-      ),
     );
   }
 
