@@ -12,13 +12,14 @@ class BackgroundMusicService extends ChangeNotifier {
   bool get isReady => _isReady;
 
   BackgroundMusicService() {
-    _player.playerStateStream.listen((state) {
-      final playing = state.playing;
+    // Lắng nghe trạng thái thực tế từ trình phát nhạc để cập nhật UI chính xác
+    _player.playingStream.listen((playing) {
       if (_isPlaying != playing) {
         _isPlaying = playing;
         notifyListeners();
       }
     });
+    
     _initialize();
   }
 
@@ -26,51 +27,23 @@ class BackgroundMusicService extends ChangeNotifier {
     if (_isInitializing) return;
     _isInitializing = true;
     try {
-      // Ưu tiên 2 bài nhạc nền; nếu codec không hỗ trợ trên một nền tảng,
-      // sẽ fallback playlist tương thích hơn để nút nhạc luôn hoạt động.
-      bool ready = false;
-
-      final playlistCandidates = <List<AudioSource>>[
-        [
+      final playlist = ConcatenatingAudioSource(
+        children: [
           AudioSource.asset('assets/audio/bai1.mp3'),
           AudioSource.asset('assets/audio/bai2.ogg'),
-        ],
-        [
-          AudioSource.asset('assets/audio/bai1.mp3'),
           AudioSource.asset('assets/audio/bai3.ogg'),
         ],
-        [AudioSource.asset('assets/audio/bai1.mp3')],
-      ];
+      );
 
-      for (final sources in playlistCandidates) {
-        try {
-          if (sources.length == 1) {
-            await _player.setAudioSource(sources.first);
-          } else {
-            await _player.setAudioSource(
-              ConcatenatingAudioSource(children: sources),
-            );
-          }
-          ready = true;
-          break;
-        } catch (_) {
-          // thử candidate tiếp theo
-        }
-      }
-
-      if (!ready) {
-        throw Exception('No playable audio source');
-      }
-
+      await _player.setAudioSource(playlist);
       await _player.setLoopMode(LoopMode.all);
       await _player.setVolume(0.45);
+      
       _isReady = true;
-      _isPlaying = false;
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Lỗi khởi tạo nhạc nền: $e');
       _isReady = false;
-      _isPlaying = false;
-      notifyListeners();
     } finally {
       _isInitializing = false;
     }
@@ -84,12 +57,14 @@ class BackgroundMusicService extends ChangeNotifier {
 
     if (_player.playing) {
       await _player.pause();
-      _isPlaying = false;
     } else {
-      await _player.play();
-      _isPlaying = true;
+      try {
+        await _player.play();
+      } catch (e) {
+        debugPrint('Không thể phát nhạc: $e');
+      }
     }
-    notifyListeners();
+    // _isPlaying sẽ được cập nhật tự động qua listener ở constructor
   }
 
   @override
@@ -98,4 +73,3 @@ class BackgroundMusicService extends ChangeNotifier {
     super.dispose();
   }
 }
-

@@ -52,11 +52,49 @@ class AccountCard extends StatelessWidget {
     return Colors.black87;
   }
 
+  void _showImagePreview(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.85),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+                  errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50, color: Colors.white),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayCode = 123001 + globalIndex;
     final isSold = _isSoldStatus(acc['status']);
     final rankName = (acc['rank'] ?? '').toString();
+    final imageUrl = (acc['image_url'] ?? '').toString();
     final price = acc['price'] is num ? (acc['price'] as num).toDouble() : 0.0;
     final NumberFormat currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
 
@@ -68,7 +106,10 @@ class AccountCard extends StatelessWidget {
         children: [
           Expanded(
             flex: 4,
-            child: PreviewableNetworkImage(imageUrl: (acc['image_url'] ?? '').toString()),
+            child: PreviewableNetworkImage(
+              imageUrl: imageUrl,
+              onTap: () => _showImagePreview(context, imageUrl),
+            ),
           ),
           Expanded(
             flex: 5,
@@ -134,7 +175,8 @@ class AccountCard extends StatelessWidget {
 
 class PreviewableNetworkImage extends StatefulWidget {
   final String imageUrl;
-  const PreviewableNetworkImage({super.key, required this.imageUrl});
+  final VoidCallback onTap;
+  const PreviewableNetworkImage({super.key, required this.imageUrl, required this.onTap});
 
   @override
   State<PreviewableNetworkImage> createState() => _PreviewableNetworkImageState();
@@ -148,21 +190,25 @@ class _PreviewableNetworkImageState extends State<PreviewableNetworkImage> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CachedNetworkImage(
-            imageUrl: widget.imageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(color: Colors.grey.shade800),
-            errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.white),
-          ),
-          if (_isHovered)
-            Container(
-              color: Colors.black38,
-              child: const Center(child: Text('Preview', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedNetworkImage(
+              imageUrl: widget.imageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(color: Colors.grey.shade800),
+              errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.white),
             ),
-        ],
+            if (_isHovered)
+              Container(
+                color: Colors.black38,
+                child: const Center(child: Icon(Icons.zoom_in, color: Colors.white, size: 40)),
+              ),
+          ],
+        ),
       ),
     );
   }
