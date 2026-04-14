@@ -171,12 +171,14 @@ class _DetailUserPageState extends State<DetailUserPage> {
                     return Row(
                       children: [
                         _buildMenuItem('Trang chủ', Icons.home, () => Navigator.pushNamed(context, '/')),
-                        const SizedBox(width: 20),
-                        _buildMenuItem('Lịch sử giao dịch', Icons.history, () {
-                          Navigator.pushNamed(context, '/history');
-                        }),
-                        const SizedBox(width: 20),
-                        const DepositMenuButton(),
+                        if (!authService.isAdmin) ...[
+                          const SizedBox(width: 20),
+                          _buildMenuItem('Lịch sử giao dịch', Icons.history, () {
+                            Navigator.pushNamed(context, '/history');
+                          }),
+                          const SizedBox(width: 20),
+                          const DepositMenuButton(),
+                        ],
                         const SizedBox(width: 30),
                         Row(
                           children: [
