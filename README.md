@@ -36,4 +36,47 @@
 - Dart
 - Firebase / API Backend (tuỳ triển khai)
 
+🚀 Hướng dẫn khởi chạy dự án
+Để chạy ứng dụng này trên máy tính cá nhân hoặc thiết bị di động, vui lòng thực hiện theo các bước sau:
+
+1. Chuẩn bị môi trường
+Trước khi bắt đầu, hãy đảm bảo máy tính đã cài đặt:
+
+Flutter SDK: Phiên bản mới nhất (tải tại flutter.dev).
+
+Editor: VS Code hoặc Android Studio (đã cài plugin Flutter & Dart).
+
+Git: Để thực hiện việc clone mã nguồn từ kho lưu trữ.
+
+2. Cách lấy dự án về máy (Clone Project)
+Mở terminal (hoặc CMD) trên máy tính và chạy lệnh sau:
+
+Bash
+git clone https://github.com/vthiem2k4/ten-du-an-cua-ban.git
+(Lưu ý: Thay đường dẫn link GitHub thật của nhóm bạn vào đây)
+
+Sau khi tải xong, di chuyển vào thư mục dự án:
+
+Bash
+cd ten-du-an-cua-ban
+3. Cài đặt các thư viện phụ thuộc
+Dự án sử dụng các gói như image_picker, intl, uuid, sqflite... Bạn cần tải chúng về bằng lệnh:
+
+Bash
+flutter pub get
+4. Kết nối thiết bị
+Dùng máy ảo: Mở Android Emulator hoặc iOS Simulator.
+
+Dùng máy thật: Kết nối điện thoại qua cáp USB và bật chế độ "USB Debugging".
+
+Kiểm tra thiết bị đã sẵn sàng chưa bằng lệnh:
+
+Bash
+flutter devices
+5. Khởi chạy ứng dụng
+Cuối cùng, chạy lệnh sau để khởi động ứng dụng:
+
+Bash
+flutter run
+
 
