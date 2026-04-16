@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/purchase_service.dart';
 import '../widgets/ui_effects.dart';
+import '../widgets/home_footer.dart';
 
 // # Lớp chứa các tham số truyền vào luồng thanh toán
 class PaymentFlowArgs {
@@ -128,7 +129,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể hoàn tất thanh toán: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('Không thể hoàn tất thanh toán'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -171,63 +172,68 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 _buildTopMenu(context), // # Menu điều hướng bên trên
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Center(
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 760),
-                        padding: const EdgeInsets.all(24),
-                        // # Contaner hiệu ứng kính mờ (Glassmorphism)
-                        child: GlassContainer(
-                          borderRadius: 20,
-                          padding: const EdgeInsets.all(22),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'XÁC NHẬN THANH TOÁN',
-                                style: TextStyle(
-                                  color: Color(0xFFF97316),
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _infoRow('Mã nick', '#${args.displayCode}'),
-                              _infoRow('Rank', (args.rank ?? '-').isEmpty ? '-' : args.rank!),
-                              _infoRow('Tướng/Skin', '${args.heroCount ?? '-'} / ${args.skinCount ?? '-'}'),
-                              _infoRow('Số dư hiện tại', _formatMoney(context.watch<AuthService>().balance)),
-                              _infoRow('Số tiền thanh toán', _formatMoney(args.price), highlight: true),
-                              const SizedBox(height: 20),
-                              Row(
+                    child: Column(
+                      children: [
+                        Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 760),
+                            padding: const EdgeInsets.all(24),
+                            // # Contaner hiệu ứng kính mờ (Glassmorphism)
+                            child: GlassContainer(
+                              borderRadius: 20,
+                              padding: const EdgeInsets.all(22),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: _isPaying ? null : () => Navigator.pop(context),
-                                      child: const Text('Quay lại'),
+                                  const Text(
+                                    'XÁC NHẬN THANH TOÁN',
+                                    style: TextStyle(
+                                      color: Color(0xFFF97316),
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFF97316),
-                                        foregroundColor: Colors.white,
+                                  const SizedBox(height: 16),
+                                  _infoRow('Mã nick', '#${args.displayCode}'),
+                                  _infoRow('Rank', (args.rank ?? '-').isEmpty ? '-' : args.rank!),
+                                  _infoRow('Tướng/Skin', '${args.heroCount ?? '-'} / ${args.skinCount ?? '-'}'),
+                                  _infoRow('Số dư hiện tại', _formatMoney(context.watch<AuthService>().balance)),
+                                  _infoRow('Số tiền thanh toán', _formatMoney(args.price), highlight: true),
+                                  const SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: _isPaying ? null : () => Navigator.pop(context),
+                                          child: const Text('Quay lại'),
+                                        ),
                                       ),
-                                      onPressed: _isPaying ? null : () => _startPayment(args),
-                                      child: _isPaying
-                                          ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                      )
-                                          : const Text('Thanh toán ngay'),
-                                    ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFF97316),
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: _isPaying ? null : () => _startPayment(args),
+                                          child: _isPaying
+                                              ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          )
+                                              : const Text('Thanh toán ngay'),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        const HomeFooter(),
+                      ],
                     ),
                   ),
                 ),
@@ -349,44 +355,51 @@ class PaymentSuccessScreen extends StatelessWidget {
                 const SizedBox(height: 80),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 760),
-                        child: GlassContainer(
-                          borderRadius: 20,
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.check_circle_outline, color: Color(0xFF4ADE80), size: 90),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'THANH TOÁN THÀNH CÔNG',
-                                style: TextStyle(color: Color(0xFFFFF7ED), fontSize: 24, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 18),
-                              _row(context, 'Mã giao dịch', orderId),
-                              _row(context, 'Nick game', gameNick),
-                              // # Dòng thông tin tài khoản và mật khẩu nick game
-                              _row(context, 'Tài khoản', account, copyable: true),
-                              _row(context, 'Mật khẩu', password, copyable: true),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF97316),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('QUAY VỀ TRANG CHỦ'),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 760),
+                              child: GlassContainer(
+                                borderRadius: 20,
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.check_circle_outline, color: Color(0xFF4ADE80), size: 90),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'THANH TOÁN THÀNH CÔNG',
+                                      style: TextStyle(color: Color(0xFFFFF7ED), fontSize: 24, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    _row(context, 'Mã giao dịch', orderId),
+                                    _row(context, 'Nick game', gameNick),
+                                    // # Dòng thông tin tài khoản và mật khẩu nick game
+                                    _row(context, 'Tài khoản', account, copyable: true),
+                                    _row(context, 'Mật khẩu', password, copyable: true),
+                                    const SizedBox(height: 20),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 50,
+                                      child: ElevatedButton(
+                                        onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFFF97316),
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('QUAY VỀ TRANG CHỦ'),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        const HomeFooter(),
+                      ],
                     ),
                   ),
                 ),
