@@ -4,6 +4,7 @@ import '../widgets/ui_effects.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/home_footer.dart';
+import '../widgets/top_menu.dart';
 
 class AdminAccountManager extends StatefulWidget {
   const AdminAccountManager({super.key});
@@ -22,7 +23,6 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
   String _selectedRankFilter = 'Tất cả';
   final List<String> _ranks = ['Tất cả', 'Đồng', 'Bạc', 'Vàng', 'Bạch Kim', 'Kim Cương', 'Tinh Anh', 'Cao Thủ', 'Chiến Tướng', 'Thách Đấu'];
 
-  // Bản đồ chuẩn hóa trạng thái
   final Map<String, String> _statusMapping = {
     'Sẵn sàng': 'available',
     'Đã bán': 'sold',
@@ -135,7 +135,6 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
                         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
                       ),
                       onPressed: () async {
-                        // Kiểm tra trống
                         if (priceController.text.isEmpty || 
                             heroController.text.isEmpty || 
                             skinController.text.isEmpty || 
@@ -148,7 +147,6 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
                           return;
                         }
 
-                        // Kiểm tra định dạng ảnh
                         if (!_isValidImageUrl(imageController.text)) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Link ảnh không hợp lệ! Vui lòng nhập link kết thúc bằng .jpg, .png, .webp...'), backgroundColor: Colors.orange),
@@ -247,30 +245,19 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
   @override
   Widget build(BuildContext context) {
     return EffectPageScaffold(
-      topMenu: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Center(
-          child: GlassContainer(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            child: Row(
-              children: [
-                InkWell(onTap: () => Navigator.pushNamed(context, '/'), child: const AnimatedShopName()),
-                const Spacer(),
-                const Text('QUẢN TRỊ VIÊN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 1.5)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.home_rounded, color: Colors.white, size: 28),
-                  onPressed: () => Navigator.pushNamed(context, '/'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      topMenu: const TopMenu(),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'QUẢN TRỊ VIÊN', 
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: 2)
+                ),
+              ),
+            ),
             FilterBar(
               selectedRank: _selectedRankFilter,
               ranks: _ranks,

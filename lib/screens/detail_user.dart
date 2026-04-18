@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/home_footer.dart';
 import '../widgets/ui_effects.dart';
+import '../widgets/top_menu.dart';
 
 class DetailUserPage extends StatefulWidget {
   const DetailUserPage({super.key});
@@ -13,7 +14,8 @@ class DetailUserPage extends StatefulWidget {
 }
 
 class _DetailUserPageState extends State<DetailUserPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final FirebaseFirestore _firestore;
+  
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -27,6 +29,12 @@ class _DetailUserPageState extends State<DetailUserPage> {
   bool _showOldPassword = false;
   bool _showNewPassword = false;
   bool _showConfirmPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _firestore = FirebaseFirestore.instance;
+  }
   
   String _formatMoney(double amount) {
     final digits = amount.toInt().toString();
@@ -81,7 +89,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
   Widget build(BuildContext context) {
     return EffectPageScaffold(
       backgroundOpacity: 0.82,
-      topMenu: _buildTopMenu(),
+      topMenu: const TopMenu(),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -136,123 +144,6 @@ class _DetailUserPageState extends State<DetailUserPage> {
         ),
       ),
     );
-  }
-
-  Widget _buildTopMenu() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Center(
-        child: GlassContainer(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.pushNamed(context, '/'),
-                child: const AnimatedShopName(),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Consumer<AuthService>(
-                      builder: (context, authService, _) {
-                  if (!authService.isLoggedIn) {
-                    return Row(
-                      children: [
-                        _buildMenuItem('Đăng ký', null, () => Navigator.pushNamed(context, '/register')),
-                        const SizedBox(width: 25),
-                        _buildMenuItem('Đăng nhập', null, () => Navigator.pushNamed(context, '/login')),
-                      ],
-                    );
-                  } else {
-                    return Row(
-                      children: [
-                        _buildMenuItem('Trang chủ', Icons.home, () => Navigator.pushNamed(context, '/')),
-                        if (!authService.isAdmin) ...[
-                          const SizedBox(width: 20),
-                          _buildMenuItem('Lịch sử giao dịch', Icons.history, () {
-                            Navigator.pushNamed(context, '/history');
-                          }),
-                          const SizedBox(width: 20),
-                          const DepositMenuButton(),
-                        ],
-                        const SizedBox(width: 30),
-                        Row(
-                          children: [
-                            Text(
-                              authService.userName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFFFF7ED),
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                              ),
-                              child: PopupMenuButton(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                position: PopupMenuPosition.under,
-                                offset: const Offset(12, 10),
-                                constraints: const BoxConstraints(minWidth: 190),
-                                color: Colors.white.withValues(alpha: 0.16),
-                                surfaceTintColor: Colors.transparent,
-                                shadowColor: Colors.black.withValues(alpha: 0.3),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
-                                ),
-                                icon: const Icon(Icons.account_circle, color: Color(0xFFF97316), size: 30),
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    child: const Text('Thông tin cá nhân', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
-                                    onTap: () {
-                                      Navigator.pushNamed(context, '/user-detail');
-                                    },
-                                  ),
-                                  PopupMenuItem(
-                                    child: const Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
-                                    onTap: () {
-                                      context.read<AuthService>().logout();
-                                      Navigator.pushNamedAndRemoveUntil(
-                                        context,
-                                        '/',
-                                        (route) => false,
-                                      );
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Đăng xuất thành công!')),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(String title, IconData? icon, VoidCallback onTap) {
-    return HoverMenuItem(title: title, icon: icon, onTap: onTap);
   }
 
   Widget _buildAccountInfo() {
@@ -801,4 +692,3 @@ class _DetailUserPageState extends State<DetailUserPage> {
   }
 
 }
-

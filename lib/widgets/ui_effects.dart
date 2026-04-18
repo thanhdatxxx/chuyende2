@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/background_music_service.dart';
 import '../services/auth_service.dart';
+import 'app_styles.dart';
 
 class GlassContainer extends StatelessWidget {
   const GlassContainer({
@@ -16,45 +18,53 @@ class GlassContainer extends StatelessWidget {
     this.constraints,
     this.padding,
     this.borderRadius = 30,
+    this.useBlur = true,
   });
 
   final Widget child;
   final BoxConstraints? constraints;
   final EdgeInsetsGeometry? padding;
   final double borderRadius;
+  final bool useBlur;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final bool effectiveBlur = useBlur && !kIsWeb; 
+
+    Widget content = Container(
+      constraints: constraints,
+      padding: padding,
       decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: effectiveBlur ? 0.13 : 0.2),
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.36)),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: ClipRect(
+      child: child,
+    );
+
+    if (effectiveBlur) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              constraints: constraints,
-              padding: padding,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.13),
-                borderRadius: BorderRadius.circular(borderRadius),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.36)),
-              ),
-              child: child,
-            ),
+            child: content,
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    return content;
   }
 }
 
@@ -72,6 +82,8 @@ class EffectPageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 800;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -82,7 +94,7 @@ class EffectPageScaffold extends StatelessWidget {
                 image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
                 fit: BoxFit.cover,
                 opacity: backgroundOpacity,
-                filterQuality: FilterQuality.low,
+                filterQuality: kIsWeb ? FilterQuality.none : FilterQuality.low,
               ),
             ),
             child: Column(
@@ -92,10 +104,11 @@ class EffectPageScaffold extends StatelessWidget {
               ],
             ),
           ),
-          const Positioned(
-            top: 14,
+          Positioned(
+            bottom: isMobile ? 80 : null,
+            top: isMobile ? null : 14,
             right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
+            child: const SafeArea(child: FloatingMusicButton()),
           ),
         ],
       ),
@@ -287,6 +300,8 @@ class _UserMenuButtonState extends State<UserMenuButton> {
             widget.auth.logout();
           } else if (value == 'admin') {
             Navigator.pushNamed(context, '/admin-accounts');
+          } else if (value == 'admin-users') {
+            Navigator.pushNamed(context, '/admin-users');
           }
         },
         child: AnimatedContainer(
@@ -330,21 +345,40 @@ class _UserMenuButtonState extends State<UserMenuButton> {
           ),
         ),
         itemBuilder: (context) => [
-          if (widget.auth.isAdmin)
-            const PopupMenuItem<String>(
+          if (widget.auth.isAdmin) ...[
+            PopupMenuItem<String>(
               value: 'admin',
-              child: Text('Quản lý tài khoản', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+              child: _buildPopupItem(Icons.settings, 'Quản lý tài khoản', color: Colors.orange),
             ),
+            PopupMenuItem<String>(
+              value: 'admin-users',
+              child: _buildPopupItem(Icons.people, 'Quản lý người dùng', color: Colors.orange),
+            ),
+            const PopupMenuDivider(height: 1),
+          ],
           PopupMenuItem<String>(
             value: 'info',
-            child: const Text('Thông tin', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
+            child: _buildPopupItem(Icons.person, 'Thông tin'),
           ),
           PopupMenuItem<String>(
             value: 'logout',
-            child: const Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
+            child: _buildPopupItem(Icons.logout, 'Đăng xuất', color: Colors.orangeAccent),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPopupItem(IconData icon, String title, {Color color = const Color(0xFFFFF7ED)}) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ],
     );
   }
 }
@@ -371,20 +405,14 @@ class DepositMenuButton extends StatelessWidget {
           Navigator.pushNamed(context, '/bank-atm');
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem<String>(
           value: 'card',
-          child: Text(
-            'Nạp tiền thẻ',
-            style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600),
-          ),
+          child: _buildPopupItem(Icons.style, 'Nạp tiền thẻ'),
         ),
         PopupMenuItem<String>(
           value: 'atm',
-          child: Text(
-            'Nạp tiền ATM',
-            style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600),
-          ),
+          child: _buildPopupItem(Icons.account_balance, 'Nạp tiền ATM'),
         ),
       ],
       child: Container(
@@ -408,6 +436,19 @@ class DepositMenuButton extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPopupItem(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFFFFF7ED)),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: const TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ],
     );
   }
 }

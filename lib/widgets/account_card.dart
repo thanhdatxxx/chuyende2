@@ -112,7 +112,7 @@ class AccountCard extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 5,
+            flex: 6,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -125,30 +125,38 @@ class AccountCard extends StatelessWidget {
                   Row(children: [
                     const Text("Rank: ", style: AppStyles.accountInfoLabelStyle),
                     const SizedBox(width: 2),
-                    Image.asset(_getRankIcon(rankName), width: 32, height: 32, fit: BoxFit.contain),
+                    Image.asset(_getRankIcon(rankName), width: 28, height: 28, fit: BoxFit.contain),
                     const SizedBox(width: 4),
                     Expanded(child: Text(rankName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _getRankColor(rankName)), overflow: TextOverflow.ellipsis)),
                   ]),
                   const SizedBox(height: 6),
-                  Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 10, children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Image.asset('assets/images/rank/tuong.png', width: 32, height: 32, fit: BoxFit.contain),
-                      const SizedBox(width: 4),
-                      Text("${acc['hero_count'] ?? 0} Tướng", style: AppStyles.accountValueStyle),
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Image.asset('assets/images/rank/skin.png', width: 32, height: 32, fit: BoxFit.contain),
-                      const SizedBox(width: 4),
-                      Text("${acc['skin_count'] ?? 0} Skin", style: AppStyles.accountValueStyle),
-                    ]),
-                  ]),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center, 
+                    spacing: 8, 
+                    runSpacing: 4,
+                    children: [
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Image.asset('assets/images/rank/tuong.png', width: 24, height: 24, fit: BoxFit.contain),
+                        const SizedBox(width: 4),
+                        Text("${acc['hero_count'] ?? 0} Tướng", style: AppStyles.accountValueStyle),
+                      ]),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        Image.asset('assets/images/rank/skin.png', width: 24, height: 24, fit: BoxFit.contain),
+                        const SizedBox(width: 4),
+                        Text("${acc['skin_count'] ?? 0} Skin", style: AppStyles.accountValueStyle),
+                      ]),
+                    ]
+                  ),
                   const Spacer(),
                   Row(children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => onDetail(acc, id, displayCode),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
-                        child: const Text("Chi tiết", style: AppStyles.buttonTextStyle),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12), // Tăng padding trở lại
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text("Chi tiết", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -157,9 +165,10 @@ class AccountCard extends StatelessWidget {
                         onPressed: isSold ? null : onBuy,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isSold ? Colors.grey : AppStyles.primaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12), // Tăng padding trở lại
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: Text(isSold ? 'Đã bán' : 'Mua ngay', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(isSold ? 'Đã bán' : 'Mua ngay', style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ])
