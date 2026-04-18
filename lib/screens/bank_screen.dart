@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
+import '../widgets/home_footer.dart';
 
 enum DepositMode { none, atm, card }
 
@@ -113,32 +114,39 @@ class _BankScreenState extends State<BankScreen> {
                   child: SafeArea(
                     top: false,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1200),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildHeader(),
-                              const SizedBox(height: 12),
-                              if (_mode != DepositMode.atm) _buildCardTemplate(isMobile),
-                              if (_mode == DepositMode.none) const SizedBox(height: 14),
-                              if (_mode != DepositMode.card) _buildAtmTemplate(isMobile),
-                              const SizedBox(height: 18),
-                              if (_mode == DepositMode.card) _buildCardHistory(),
-                              if (_mode == DepositMode.atm) _buildAtmHistory(),
-                              if (_mode == DepositMode.none)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 22),
-                                  child: Text(
-                                    'Nhấn "NẠP TIỀN NGAY" rồi chọn "NẠP TIỀN ATM" hoặc "NẠP TIỀN THẺ" để xem mẫu tương ứng.',
-                                    style: TextStyle(color: Color(0xFF7C2D12), fontWeight: FontWeight.w600),
-                                  ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 1200),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildHeader(),
+                                    const SizedBox(height: 12),
+                                    if (_mode != DepositMode.atm) _buildCardTemplate(isMobile),
+                                    if (_mode == DepositMode.none) const SizedBox(height: 14),
+                                    if (_mode != DepositMode.card) _buildAtmTemplate(isMobile),
+                                    const SizedBox(height: 18),
+                                    if (_mode == DepositMode.card) _buildCardHistory(),
+                                    if (_mode == DepositMode.atm) _buildAtmHistory(),
+                                    if (_mode == DepositMode.none)
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 22),
+                                        child: Text(
+                                          'Nhấn "NẠP TIỀN NGAY" rồi chọn "NẠP TIỀN ATM" hoặc "NẠP TIỀN THẺ" để xem mẫu tương ứng.',
+                                          style: TextStyle(color: Color(0xFF7C2D12), fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                            ],
+                              ),
+                            ),
                           ),
-                        ),
+                          const HomeFooter(),
+                        ],
                       ),
                     ),
                   ),
@@ -724,4 +732,3 @@ class _BankScreenState extends State<BankScreen> {
     );
   }
 }
-
