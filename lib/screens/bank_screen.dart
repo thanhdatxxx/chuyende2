@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
 import '../widgets/home_footer.dart';
+import '../widgets/top_menu.dart';
 
 enum DepositMode { none, atm, card }
 
@@ -94,165 +95,42 @@ class _BankScreenState extends State<BankScreen> {
     final width = MediaQuery.of(context).size.width;
     final isMobile = width < 900;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.78,
-                filterQuality: FilterQuality.low,
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildTopMenu(),
-                Expanded(
-                  child: SafeArea(
-                    top: false,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 1200),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildHeader(),
-                                    const SizedBox(height: 12),
-                                    if (_mode != DepositMode.atm) _buildCardTemplate(isMobile),
-                                    if (_mode == DepositMode.none) const SizedBox(height: 14),
-                                    if (_mode != DepositMode.card) _buildAtmTemplate(isMobile),
-                                    const SizedBox(height: 18),
-                                    if (_mode == DepositMode.card) _buildCardHistory(),
-                                    if (_mode == DepositMode.atm) _buildAtmHistory(),
-                                    if (_mode == DepositMode.none)
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 22),
-                                        child: Text(
-                                          'Nhấn "NẠP TIỀN NGAY" rồi chọn "NẠP TIỀN ATM" hoặc "NẠP TIỀN THẺ" để xem mẫu tương ứng.',
-                                          style: TextStyle(color: Color(0xFF7C2D12), fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
+    return EffectPageScaffold(
+      topMenu: const TopMenu(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 12),
+                      if (_mode != DepositMode.atm) _buildCardTemplate(isMobile),
+                      if (_mode == DepositMode.none) const SizedBox(height: 14),
+                      if (_mode != DepositMode.card) _buildAtmTemplate(isMobile),
+                      const SizedBox(height: 18),
+                      if (_mode == DepositMode.card) _buildCardHistory(),
+                      if (_mode == DepositMode.atm) _buildAtmHistory(),
+                      if (_mode == DepositMode.none)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 22),
+                          child: Text(
+                            'Nhấn "NẠP TIỀN NGAY" rồi chọn "NẠP TIỀN ATM" hoặc "NẠP TIỀN THẺ" để xem mẫu tương ứng.',
+                            style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.w600),
                           ),
-                          const HomeFooter(),
-                        ],
-                      ),
-                    ),
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          const Positioned(
-            top: 14,
-            right: 14,
-            child: SafeArea(child: FloatingMusicButton()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopMenu() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Center(
-        child: GlassContainer(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.pushNamed(context, '/'),
-                child: const AnimatedShopName(),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Consumer<AuthService>(
-                      builder: (context, authService, _) {
-                        if (!authService.isLoggedIn) {
-                          return Row(
-                            children: [
-                              HoverMenuItem(title: 'Đăng ký', onTap: () => Navigator.pushNamed(context, '/register')),
-                              const SizedBox(width: 25),
-                              HoverMenuItem(title: 'Đăng nhập', onTap: () => Navigator.pushNamed(context, '/login')),
-                            ],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            HoverMenuItem(title: 'Trang chủ', icon: Icons.home, onTap: () => Navigator.pushNamed(context, '/')),
-                            const SizedBox(width: 25),
-                            HoverMenuItem(title: 'Lịch sử giao dịch', icon: Icons.history, onTap: () => Navigator.pushNamed(context, '/history')),
-                            const SizedBox(width: 25),
-                            const DepositMenuButton(),
-                            const SizedBox(width: 30),
-                            Text(
-                              authService.userName,
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFFFF7ED), fontSize: 14),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                              ),
-                              child: PopupMenuButton(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                position: PopupMenuPosition.under,
-                                offset: const Offset(12, 10),
-                                constraints: const BoxConstraints(minWidth: 190),
-                                color: Colors.white.withValues(alpha: 0.16),
-                                surfaceTintColor: Colors.transparent,
-                                shadowColor: Colors.black.withValues(alpha: 0.3),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
-                                ),
-                                icon: const Icon(Icons.account_circle, color: Color(0xFFF97316), size: 30),
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    child: const Text('Thông tin cá nhân', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
-                                    onTap: () => Navigator.pushNamed(context, '/user-detail'),
-                                  ),
-                                  PopupMenuItem(
-                                    child: const Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600)),
-                                    onTap: () {
-                                      context.read<AuthService>().logout();
-                                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Đăng xuất thành công!')),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            const HomeFooter(),
+          ],
         ),
       ),
     );
@@ -519,7 +397,7 @@ class _BankScreenState extends State<BankScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF7C2D12))),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFED7AA))),
             const SizedBox(height: 10),
             const Icon(Icons.person_search, size: 110, color: Color(0xFFB45309)),
           ],
@@ -651,7 +529,7 @@ class _BankScreenState extends State<BankScreen> {
     }
   }
 
-  Widget _label(String text) => Text(text, style: const TextStyle(color: Color(0xFF7C2D12), fontWeight: FontWeight.w700, fontSize: 28));
+  Widget _label(String text) => Text(text, style: const TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.w700, fontSize: 18));
 
   Widget _buildDropdown(String hint, List<String> items, String? value, ValueChanged<String?> onChanged) {
     return Container(
