@@ -28,7 +28,7 @@ class HomeFooter extends StatelessWidget {
                   _buildFlexibleColumn(
                     isMobile: isMobile,
                     flex: 2,
-                    child: _buildShopInfo(),
+                    child: _buildShopInfo(isMobile),
                   ),
                   if (isMobile) const SizedBox(height: 30) else const SizedBox(width: 30),
                   _buildFlexibleColumn(
@@ -64,19 +64,24 @@ class HomeFooter extends StatelessWidget {
     return Expanded(flex: flex, child: child);
   }
 
-  Widget _buildShopInfo() {
-    return const Column(
+  Widget _buildShopInfo(bool isMobile) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.gamepad, color: AppStyles.primaryColor, size: 24),
-            SizedBox(width: 8),
-            AnimatedShopName(),
+            Icon(
+              Icons.gamepad, 
+              color: AppStyles.primaryColor, 
+              size: isMobile ? 20 : 24
+            ),
+            const SizedBox(width: 8),
+            AnimatedShopName(fontSize: isMobile ? 16 : 18),
           ],
         ),
-        SizedBox(height: 10),
-        Text(
+        const SizedBox(height: 10),
+        const Text(
           "Hệ thống bán tài khoản Liên Quân Mobile uy tín, chất lượng hàng đầu Việt Nam. Giao dịch tự động 24/7.",
           style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
         ),

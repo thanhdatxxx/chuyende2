@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../services/cache_service.dart';
 import '../widgets/app_styles.dart';
@@ -11,6 +11,7 @@ import '../widgets/account_card.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/home_footer.dart';
 import '../widgets/ui_effects.dart';
+import '../widgets/top_menu.dart';
 import 'payment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -60,15 +61,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 800;
+
     return Scaffold(
       backgroundColor: AppStyles.backgroundColor,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(image: DecorationImage(image: AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'), fit: BoxFit.cover, opacity: 0.78)),
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'), 
+                fit: BoxFit.cover, 
+                opacity: 0.78,
+                filterQuality: kIsWeb ? FilterQuality.none : FilterQuality.low,
+              )
+            ),
             child: Column(
               children: [
-                _buildTopMenu(),
+                const TopMenu(),
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _scrollController,
@@ -92,59 +102,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const Positioned(top: 14, right: 14, child: SafeArea(child: FloatingMusicButton())),
+          // Thay đổi vị trí nút nhạc trên Mobile
+          Positioned(
+            bottom: isMobile ? 80 : null,
+            top: isMobile ? null : 14,
+            right: 14,
+            child: const SafeArea(child: FloatingMusicButton()),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTopMenu() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Center(
-        child: GlassContainer(
-          constraints: const BoxConstraints(maxWidth: 1200), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Row(children: [
-            InkWell(onTap: () => Navigator.pushNamed(context, '/'), child: const Row(children: [Icon(Icons.gamepad, color: AppStyles.primaryColor, size: 28), SizedBox(width: 8), AnimatedShopName()])),
-            const Spacer(),
-            _buildAuthMenu(),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAuthMenu() {
-    return Consumer<AuthService>(
-      builder: (context, auth, _) {
-        if (!auth.isLoggedIn) {
-          return Row(children: [
-            _buildMenuItem('Đăng ký', null, () => Navigator.pushNamed(context, '/register')),
-            const SizedBox(width: 25),
-            _buildMenuItem('Đăng nhập', null, () => Navigator.pushNamed(context, '/login')),
-          ]);
-        }
-        return Row(children: [
-          _buildMenuItem('Trang chủ', Icons.home, () {}),
-          if (!auth.isAdmin) ...[
-            const SizedBox(width: 20),
-            _buildMenuItem('Lịch sử', Icons.history, () => Navigator.pushNamed(context, '/history')),
-            const SizedBox(width: 20),
-            const DepositMenuButton(),
-          ],
-          const SizedBox(width: 30),
-          UserMenuButton(auth: auth),
-        ]);
-      },
-    );
-  }
-
-  Widget _buildMenuItem(String t, IconData? i, VoidCallback o) => HoverMenuItem(title: t, icon: i, onTap: o);
-
   Widget _buildBannerSlider() {
     final List<String> imgs = ['assets/images/banner1.jpg', 'assets/images/banner2.jpg', 'assets/images/banner3.jpg'];
     return CarouselSlider(
-      options: CarouselOptions(autoPlay: true, aspectRatio: 22 / 8, enlargeCenterPage: true, viewportFraction: 0.62),
+      options: CarouselOptions(
+        autoPlay: true, 
+        aspectRatio: 22 / 8, 
+        enlargeCenterPage: true, 
+        viewportFraction: 0.62,
+      ),
       items: imgs.map((i) => ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.asset(i, fit: BoxFit.cover, width: double.infinity))).toList(),
     );
   }
@@ -188,8 +166,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final sw = MediaQuery.of(context).size.width;
     int count = sw >= 1450 ? 4 : sw >= 1100 ? 3 : sw >= 760 ? 2 : 1;
     return GridView.builder(
-      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), padding: const EdgeInsets.all(15),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: count, childAspectRatio: sw < 450 ? 0.94 : 0.72, crossAxisSpacing: 15, mainAxisSpacing: 15),
+      shrinkWrap: true, 
+      physics: const NeverScrollableScrollPhysics(), 
+      padding: const EdgeInsets.all(15),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: count, 
+        childAspectRatio: sw < 450 ? 0.94 : 0.72, 
+        crossAxisSpacing: 15, 
+        mainAxisSpacing: 15
+      ),
       itemCount: docs.length,
       itemBuilder: (ctx, i) => AccountCard(
         acc: docs[i], id: docs[i]['docId'] ?? '', globalIndex: start + i, 
