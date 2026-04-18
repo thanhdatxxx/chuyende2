@@ -178,7 +178,7 @@ class AnimatedShopName extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.4),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                  ),
+                    ),
                 ],
               ),
             ),
@@ -348,21 +348,21 @@ class _UserMenuButtonState extends State<UserMenuButton> {
           if (widget.auth.isAdmin) ...[
             PopupMenuItem<String>(
               value: 'admin',
-              child: _buildPopupItem(Icons.settings, 'Quản lý tài khoản', color: Colors.orange),
+              child: _buildPopupItem(Icons.settings, 'Quản lý tài khoản'),
             ),
             PopupMenuItem<String>(
               value: 'admin-users',
-              child: _buildPopupItem(Icons.people, 'Quản lý người dùng', color: Colors.orange),
+              child: _buildPopupItem(Icons.people, 'Quản lý người dùng'),
             ),
             const PopupMenuDivider(height: 1),
           ],
           PopupMenuItem<String>(
             value: 'info',
-            child: _buildPopupItem(Icons.person, 'Thông tin'),
+            child: _buildPopupItem(Icons.person, 'Thông tin người dùng'),
           ),
           PopupMenuItem<String>(
             value: 'logout',
-            child: _buildPopupItem(Icons.logout, 'Đăng xuất', color: Colors.orangeAccent),
+            child: _buildPopupItem(Icons.logout, 'Đăng xuất'),
           ),
         ],
       ),

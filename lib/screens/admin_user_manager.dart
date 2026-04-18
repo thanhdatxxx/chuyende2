@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/ui_effects.dart';
@@ -32,115 +33,128 @@ class _AdminUserManagerState extends State<AdminUserManager> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: 24,
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEditing ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                _buildField(fullNameController, 'Họ tên *', Icons.person),
-                _buildField(userNameController, 'Tên đăng nhập *', Icons.account_circle),
-                _buildField(emailController, 'Email *', Icons.email),
-                _buildField(passwordController, 'Mật khẩu *', Icons.vpn_key),
-                _buildField(balanceController, 'Số dư (vnđ) *', Icons.account_balance_wallet, isNumber: true),
-                
-                const Text('Vai trò', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                StatefulBuilder(
-                  builder: (context, setInnerState) => DropdownButtonFormField<String>(
-                    value: selectedRole,
-                    dropdownColor: const Color(0xFF1E293B),
-                    style: const TextStyle(color: Colors.white),
-                    items: const [
-                      DropdownMenuItem(value: 'user', child: Text('Người dùng (User)')),
-                      DropdownMenuItem(value: 'admin', child: Text('Quản trị (Admin)')),
-                    ],
-                    onChanged: (v) => setInnerState(() => selectedRole = v!),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.security, color: AppStyles.primaryColor, size: 20),
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B).withOpacity(0.15), // Trong suốt hơn
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: Colors.white70))),
-                    const SizedBox(width: 15),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primaryColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                    Text(
+                      isEditing ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildField(fullNameController, 'Họ tên *', Icons.person),
+                    _buildField(userNameController, 'Tên đăng nhập *', Icons.account_circle),
+                    _buildField(emailController, 'Email *', Icons.email),
+                    _buildField(passwordController, 'Mật khẩu *', Icons.vpn_key),
+                    _buildField(balanceController, 'Số dư (vnđ) *', Icons.account_balance_wallet, isNumber: true),
+                    
+                    const Text('Vai trò', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    StatefulBuilder(
+                      builder: (context, setInnerState) => DropdownButtonFormField<String>(
+                        value: selectedRole,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white),
+                        items: const [
+                          DropdownMenuItem(value: 'user', child: Text('Người dùng (User)')),
+                          DropdownMenuItem(value: 'admin', child: Text('Quản trị (Admin)')),
+                        ],
+                        onChanged: (v) => setInnerState(() => selectedRole = v!),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.security, color: AppStyles.primaryColor, size: 20),
+                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                        ),
                       ),
-                      onPressed: () async {
-                        final fullName = fullNameController.text.trim();
-                        final userName = userNameController.text.trim();
-                        final email = emailController.text.trim();
-                        final password = passwordController.text;
+                    ),
+                    const SizedBox(height: 30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: Colors.white70))),
+                        const SizedBox(width: 15),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                          ),
+                          onPressed: () async {
+                            final fullName = fullNameController.text.trim();
+                            final userName = userNameController.text.trim();
+                            final email = emailController.text.trim();
+                            final password = passwordController.text;
 
-                        if (fullName.isEmpty || userName.isEmpty || email.isEmpty || password.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin bắt buộc'), backgroundColor: Colors.redAccent),
-                          );
-                          return;
-                        }
+                            if (fullName.isEmpty || userName.isEmpty || email.isEmpty || password.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin bắt buộc'), backgroundColor: Colors.redAccent),
+                              );
+                              return;
+                            }
 
-                        final emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
-                        final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
-                        final hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+                            final emailRegex = RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+                            final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+                            final hasLowercase = RegExp(r'[a-z]').hasMatch(password);
 
-                        if (!emailRegex.hasMatch(email)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Email không hợp lệ. Ví dụ: tenban@gmail.com'), backgroundColor: Colors.orange),
-                          );
-                          return;
-                        }
+                            if (!emailRegex.hasMatch(email)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Email không hợp lệ. Ví dụ: tenban@gmail.com'), backgroundColor: Colors.orange),
+                              );
+                              return;
+                            }
 
-                        if (password.length < 6 || !hasUppercase || !hasLowercase) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Mật khẩu phải từ 6 ký tự và có cả chữ hoa + chữ thường!'), backgroundColor: Colors.orange),
-                          );
-                          return;
-                        }
+                            if (password.length < 6 || !hasUppercase || !hasLowercase) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Mật khẩu phải từ 6 ký tự và có cả chữ hoa + chữ thường!'), backgroundColor: Colors.orange),
+                              );
+                              return;
+                            }
 
-                        final data = {
-                          'full_name': fullName,
-                          'user_name': userName,
-                          'email': email,
-                          'pass': password,
-                          'balance': double.tryParse(balanceController.text) ?? 0,
-                          'role': selectedRole,
-                          'updated_at': FieldValue.serverTimestamp(),
-                        };
+                            final data = {
+                              'full_name': fullName,
+                              'user_name': userName,
+                              'email': email,
+                              'pass': password,
+                              'balance': double.tryParse(balanceController.text) ?? 0,
+                              'role': selectedRole,
+                              'updated_at': FieldValue.serverTimestamp(),
+                            };
 
-                        try {
-                          if (isEditing) {
-                            await _firestore.collection('user').doc(docId).update(data);
-                          } else {
-                            data['deposited_money'] = 0.0;
-                            data['created_at'] = FieldValue.serverTimestamp();
-                            await _firestore.collection('user').add(data);
-                          }
-                          if (mounted) Navigator.pop(context);
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-                          }
-                        }
-                      },
-                      child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold)),
+                            try {
+                              if (isEditing) {
+                                await _firestore.collection('user').doc(docId).update(data);
+                              } else {
+                                data['deposited_money'] = 0.0;
+                                data['created_at'] = FieldValue.serverTimestamp();
+                                await _firestore.collection('user').add(data);
+                              }
+                              if (mounted) Navigator.pop(context);
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

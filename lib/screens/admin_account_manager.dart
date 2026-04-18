@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/ui_effects.dart';
@@ -67,132 +68,145 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: 24,
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEditing ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                _buildField(priceController, 'Giá (vnđ) *', Icons.attach_money, isNumber: true),
-                
-                const Text('Hạng (Rank) *', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                StatefulBuilder(
-                  builder: (context, setInnerState) => DropdownButtonFormField<String>(
-                    value: selectedRank,
-                    dropdownColor: const Color(0xFF1E293B),
-                    style: const TextStyle(color: Colors.white),
-                    items: rankOptions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                    onChanged: (v) => setInnerState(() => selectedRank = v!),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.emoji_events, color: AppStyles.primaryColor, size: 20),
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-
-                _buildField(heroController, 'Số tướng *', Icons.person, isNumber: true),
-                _buildField(skinController, 'Số trang phục *', Icons.checkroom, isNumber: true),
-                _buildField(imageController, 'Link ảnh *', Icons.image),
-                _buildField(tkController, 'Tài khoản (để bàn giao) *', Icons.account_box),
-                _buildField(mkController, 'Mật khẩu (để bàn giao) *', Icons.vpn_key),
-                _buildField(descriptionController, 'Mô tả', Icons.description, maxLines: 3),
-                
-                const Text('Trạng thái', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                StatefulBuilder(
-                  builder: (context, setInnerState) => DropdownButtonFormField<String>(
-                    value: selectedStatus,
-                    dropdownColor: const Color(0xFF1E293B),
-                    style: const TextStyle(color: Colors.white),
-                    items: const [
-                      DropdownMenuItem(value: 'available', child: Text('Sẵn sàng')),
-                      DropdownMenuItem(value: 'sold', child: Text('Đã bán')),
-                    ],
-                    onChanged: (v) => setInnerState(() => selectedStatus = v!),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.info_outline, color: AppStyles.primaryColor, size: 20),
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B).withOpacity(0.15), // Giảm xuống 0.15 để trong suốt hơn nữa
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: Colors.white70))),
-                    const SizedBox(width: 15),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppStyles.primaryColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                    Text(
+                      isEditing ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildField(priceController, 'Giá (vnđ) *', Icons.attach_money, isNumber: true),
+                    
+                    const Text('Hạng (Rank) *', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    StatefulBuilder(
+                      builder: (context, setInnerState) => DropdownButtonFormField<String>(
+                        value: selectedRank,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white),
+                        items: rankOptions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                        onChanged: (v) => setInnerState(() => selectedRank = v!),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.emoji_events, color: AppStyles.primaryColor, size: 20),
+                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                        ),
                       ),
-                      onPressed: () async {
-                        if (priceController.text.isEmpty || 
-                            heroController.text.isEmpty || 
-                            skinController.text.isEmpty || 
-                            imageController.text.isEmpty || 
-                            tkController.text.isEmpty || 
-                            mkController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Vui lòng nhập đầy đủ các trường có dấu *'), backgroundColor: Colors.redAccent),
-                          );
-                          return;
-                        }
+                    ),
+                    const SizedBox(height: 15),
 
-                        if (!_isValidImageUrl(imageController.text)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Link ảnh không hợp lệ! Vui lòng nhập link kết thúc bằng .jpg, .png, .webp...'), backgroundColor: Colors.orange),
-                          );
-                          return;
-                        }
+                    _buildField(heroController, 'Số tướng *', Icons.person, isNumber: true),
+                    _buildField(skinController, 'Số trang phục *', Icons.checkroom, isNumber: true),
+                    _buildField(imageController, 'Link ảnh *', Icons.image),
+                    _buildField(tkController, 'Tài khoản (để bàn giao) *', Icons.account_box),
+                    _buildField(mkController, 'Mật khẩu (để bàn giao) *', Icons.vpn_key),
+                    _buildField(descriptionController, 'Mô tả', Icons.description, maxLines: 3),
+                    
+                    const Text('Trạng thái', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    StatefulBuilder(
+                      builder: (context, setInnerState) => DropdownButtonFormField<String>(
+                        value: selectedStatus,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white),
+                        items: const [
+                          DropdownMenuItem(value: 'available', child: Text('Sẵn sàng')),
+                          DropdownMenuItem(value: 'sold', child: Text('Đã bán')),
+                        ],
+                        onChanged: (v) => setInnerState(() => selectedStatus = v!),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.info_outline, color: AppStyles.primaryColor, size: 20),
+                          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.3))),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: Colors.white70))),
+                        const SizedBox(width: 15),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppStyles.primaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                          ),
+                          onPressed: () async {
+                            if (priceController.text.isEmpty || 
+                                heroController.text.isEmpty || 
+                                skinController.text.isEmpty || 
+                                imageController.text.isEmpty || 
+                                tkController.text.isEmpty || 
+                                mkController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Vui lòng nhập đầy đủ các trường có dấu *'), backgroundColor: Colors.redAccent),
+                              );
+                              return;
+                            }
 
-                        final data = {
-                          'price': double.tryParse(priceController.text) ?? 0,
-                          'rank': selectedRank,
-                          'hero_count': int.tryParse(heroController.text) ?? 0,
-                          'skin_count': int.tryParse(skinController.text) ?? 0,
-                          'image_url': imageController.text,
-                          'description': descriptionController.text,
-                          'taikhoan': tkController.text,
-                          'matkhau': mkController.text,
-                          'status': selectedStatus,
-                          'updated_at': FieldValue.serverTimestamp(),
-                        };
+                            if (!_isValidImageUrl(imageController.text)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Link ảnh không hợp lệ! Vui lòng nhập link kết thúc bằng .jpg, .png, .webp...'), backgroundColor: Colors.orange),
+                              );
+                              return;
+                            }
 
-                        try {
-                          if (isEditing) {
-                            await _firestore.collection('accounts').doc(docId).update(data);
-                          } else {
-                            data['created_at'] = FieldValue.serverTimestamp();
-                            await _firestore.collection('accounts').add(data);
-                          }
-                          if (mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã lưu thành công!'), backgroundColor: Colors.green),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold)),
+                            final data = {
+                              'price': double.tryParse(priceController.text) ?? 0,
+                              'rank': selectedRank,
+                              'hero_count': int.tryParse(heroController.text) ?? 0,
+                              'skin_count': int.tryParse(skinController.text) ?? 0,
+                              'image_url': imageController.text,
+                              'description': descriptionController.text,
+                              'taikhoan': tkController.text,
+                              'matkhau': mkController.text,
+                              'status': selectedStatus,
+                              'updated_at': FieldValue.serverTimestamp(),
+                            };
+
+                            try {
+                              if (isEditing) {
+                                await _firestore.collection('accounts').doc(docId).update(data);
+                              } else {
+                                data['created_at'] = FieldValue.serverTimestamp();
+                                await _firestore.collection('accounts').add(data);
+                              }
+                              if (mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đã lưu thành công!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                          child: const Text('Lưu thay đổi', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -303,7 +317,7 @@ class _AdminAccountManagerState extends State<AdminAccountManager> {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 
                 double minPrice = double.tryParse(_minPriceController.text) ?? 0;
-                double maxPrice = double.tryParse(_maxPriceController.text) ?? double.infinity;
+                double maxPrice = double.tryParse(_minPriceController.text) ?? double.infinity;
                 
                 final allDocs = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;

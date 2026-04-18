@@ -133,11 +133,11 @@ class TopMenu extends StatelessWidget {
                 const PopupMenuItem(value: 'deposit_atm', child: Text('Nạp tiền ATM', style: TextStyle(color: Color(0xFFFFF7ED)))),
               ],
               if (auth.isAdmin) ...[
-                const PopupMenuItem(value: 'admin_acc', child: Text('Quản lý tài khoản', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))),
-                const PopupMenuItem(value: 'admin_user', child: Text('Quản lý người dùng', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold))),
+                const PopupMenuItem(value: 'admin_acc', child: Text('Quản lý tài khoản', style: TextStyle(color: Color(0xFFFFF7ED)))),
+                const PopupMenuItem(value: 'admin_user', child: Text('Quản lý người dùng', style: TextStyle(color: Color(0xFFFFF7ED)))),
               ],
               const PopupMenuItem(value: 'user_info', child: Text('Thông tin cá nhân', style: TextStyle(color: Color(0xFFFFF7ED)))),
-              const PopupMenuItem(value: 'logout', child: Text('Đăng xuất', style: TextStyle(color: Colors.orangeAccent))),
+              const PopupMenuItem(value: 'logout', child: Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED)))),
             ],
           ],
         );
