@@ -88,22 +88,25 @@ class EffectPageScaffold extends StatelessWidget {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
+          // Phần nền cố định phía sau
+          Positioned.fill(
+            child: Opacity(
+              opacity: backgroundOpacity,
+              child: Image.asset(
+                'assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg',
                 fit: BoxFit.cover,
-                opacity: backgroundOpacity,
                 filterQuality: kIsWeb ? FilterQuality.none : FilterQuality.low,
               ),
             ),
-            child: Column(
-              children: [
-                topMenu,
-                Expanded(child: body),
-              ],
-            ),
           ),
+          // Nội dung chính
+          Column(
+            children: [
+              topMenu,
+              Expanded(child: body),
+            ],
+          ),
+          // Nút nhạc
           Positioned(
             bottom: isMobile ? 80 : null,
             top: isMobile ? null : 14,
@@ -178,7 +181,7 @@ class AnimatedShopName extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.4),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                    ),
+                  ),
                 ],
               ),
             ),

@@ -19,7 +19,14 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
 
   double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '') ?? 0;
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+  }
+
+  int _asIntSafe(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value == null) return fallback;
+    return int.tryParse(value.toString()) ?? fallback;
   }
 
   String _formatMoney(double amount) {
@@ -38,12 +45,6 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
   bool _isSoldStatus(dynamic value) {
     final status = (value ?? '').toString().trim().toLowerCase();
     return status.contains('da ban') || status.contains('đã bán');
-  }
-
-  int? _asInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '');
   }
 
   Future<Map<String, Map<String, dynamic>>> _loadSoldAccounts(String userName) async {
@@ -85,7 +86,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
       '/history-transaction-detail',
       arguments: {
         'historyId': historyId,
-        'accountCode': _asInt(accountCode),
+        'accountCode': _asIntSafe(accountCode),
       },
     );
   }
@@ -98,163 +99,181 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
 
     return EffectPageScaffold(
       topMenu: const TopMenu(),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 1320),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'LỊCH SỬ GIAO DỊCH',
-                  style: TextStyle(
-                    color: Color(0xFFF97316),
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                StreamBuilder<QuerySnapshot>(
-                  stream: auth.isLoggedIn
-                      ? _firestore
-                      .collection('history')
-                      .where('user_name', isEqualTo: auth.userName)
-                      .snapshots()
-                      : const Stream.empty(),
-                  builder: (context, snapshot) {
-                    if (!auth.isLoggedIn) {
-                      return _emptyHistoryBox('Vui lòng đăng nhập để xem lịch sử giao dịch.', isMobile);
-                    }
-                    if (snapshot.hasError) {
-                      return _emptyHistoryBox('Không thể tải lịch sử giao dịch. Vui lòng thử lại sau.', isMobile);
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final rawDocs = snapshot.data?.docs ?? [];
-                    final docs = rawDocs.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final type = (data['type'] ?? 'purchase').toString().trim().toLowerCase();
-                      return type == 'purchase';
-                    }).toList()
-                      ..sort((a, b) {
-                        final aTime = (a.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
-                        final bTime = (b.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
-                        if (aTime == null && bTime == null) return 0;
-                        if (aTime == null) return 1;
-                        if (bTime == null) return -1;
-                        return bTime.compareTo(aTime);
-                      });
-
-                    return FutureBuilder<Map<String, Map<String, dynamic>>>(
-                      future: _loadSoldAccounts(auth.userName),
-                      builder: (context, soldSnapshot) {
-                        if (soldSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-
-                        final soldMap = soldSnapshot.data ?? const <String, Map<String, dynamic>>{};
-                        if (docs.isEmpty && soldMap.isEmpty) {
-                          return _emptyHistoryBox('Bạn chưa có lịch sử mua nick nào.', isMobile);
-                        }
-
-                        final items = <Map<String, dynamic>>[];
-                        final accountIdsInHistory = <String>{};
-
-                        for (var i = 0; i < docs.length; i++) {
-                          final doc = docs[i];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final accountId = (data['account_id'] ?? '').toString();
-                          if (accountId.isNotEmpty) {
-                            accountIdsInHistory.add(accountId);
-                          }
-                          items.add({
-                            'history_id': doc.id,
-                            'account_id': accountId,
-                            'transaction_code': (data['transaction_code'] as num?)?.toInt() ?? (300001 + i),
-                            'account_code': (data['account_code'] ?? '-').toString(),
-                            'amount': _asDouble(data['amount']),
-                            'created_at': data['created_at'] as Timestamp?,
-                            'from_history': true,
-                          });
-                        }
-
-                        var fallbackIndex = items.length;
-                        soldMap.forEach((accountId, soldData) {
-                          if (accountIdsInHistory.contains(accountId)) return;
-                          items.add({
-                            'history_id': '',
-                            'account_id': accountId,
-                            'transaction_code': 300001 + fallbackIndex,
-                            'account_code': (soldData['account_code'] ?? '-').toString(),
-                            'amount': _asDouble(soldData['price']),
-                            'created_at': soldData['sold_at'] as Timestamp?,
-                            'from_history': false,
-                          });
-                          fallbackIndex++;
-                        });
-
-                        return Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.86),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.7)),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 1320),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'LỊCH SỬ GIAO DỊCH',
+                            style: TextStyle(
+                              color: Color(0xFFF97316),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: items.length,
-                            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.orange.shade100),
-                            itemBuilder: (context, index) {
-                              final item = items[index];
-                              final accountId = (item['account_id'] ?? '').toString();
-                              final soldData = soldMap[accountId];
-                              final statusText = (soldData?['status'] ?? 'Đã bán').toString();
+                          const SizedBox(height: 18),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: auth.isLoggedIn
+                                ? _firestore
+                                .collection('history')
+                                .where('user_name', isEqualTo: auth.userName)
+                                .snapshots()
+                                : const Stream.empty(),
+                            builder: (context, snapshot) {
+                              if (!auth.isLoggedIn) {
+                                return _emptyHistoryBox('Vui lòng đăng nhập để xem lịch sử giao dịch.', isMobile);
+                              }
+                              if (snapshot.hasError) {
+                                return _emptyHistoryBox('Không thể tải lịch sử giao dịch. Vui lòng thử lại sau.', isMobile);
+                              }
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
 
-                              return _AnimatedHistoryItem(
-                                vsync: this,
-                                index: index,
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                  title: Text(
-                                    'Mã giao dịch #${item['transaction_code']} - Nick #${item['account_code']}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text(
-                                    'Giá: ${_formatMoney(item['amount'] as double)} | Thời gian: ${_formatDate(item['created_at'] as Timestamp?)} | Trạng thái: $statusText',
-                                  ),
-                                  trailing: (item['from_history'] == true && (item['history_id'] as String).isNotEmpty)
-                                      ? ElevatedButton(
-                                    onPressed: () => _showTransactionDetail(
-                                      item['history_id'] as String,
-                                      item['account_code'],
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF97316),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    child: const Text('Xem chi tiết giao dịch'),
-                                  )
-                                      : const Text('Dữ liệu bổ sung', style: TextStyle(fontSize: 12)),
-                                ),
+                              final rawDocs = snapshot.data?.docs ?? [];
+                              final docs = rawDocs.where((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                final type = (data['type'] ?? 'purchase').toString().trim().toLowerCase();
+                                return type == 'purchase';
+                              }).toList()
+                                ..sort((a, b) {
+                                  final aTime = (a.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
+                                  final bTime = (b.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
+                                  if (aTime == null && bTime == null) return 0;
+                                  if (aTime == null) return 1;
+                                  if (bTime == null) return -1;
+                                  return bTime.compareTo(aTime);
+                                });
+
+                              return FutureBuilder<Map<String, Map<String, dynamic>>>(
+                                future: _loadSoldAccounts(auth.userName),
+                                builder: (context, soldSnapshot) {
+                                  if (soldSnapshot.connectionState == ConnectionState.waiting) {
+                                    return const Center(child: CircularProgressIndicator());
+                                  }
+
+                                  final soldMap = soldSnapshot.data ?? const <String, Map<String, dynamic>>{};
+                                  if (docs.isEmpty && soldMap.isEmpty) {
+                                    return _emptyHistoryBox('Bạn chưa có lịch sử mua nick nào.', isMobile);
+                                  }
+
+                                  final items = <Map<String, dynamic>>[];
+                                  final accountIdsInHistory = <String>{};
+
+                                  for (var i = 0; i < docs.length; i++) {
+                                    final doc = docs[i];
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    final accountId = (data['account_id'] ?? '').toString();
+                                    if (accountId.isNotEmpty) {
+                                      accountIdsInHistory.add(accountId);
+                                    }
+                                    items.add({
+                                      'history_id': doc.id,
+                                      'account_id': accountId,
+                                      'transaction_code': _asIntSafe(data['transaction_code'], fallback: 300001 + i),
+                                      'account_code': (data['account_code'] ?? '-').toString(),
+                                      'amount': _asDouble(data['amount']),
+                                      'created_at': data['created_at'] as Timestamp?,
+                                      'from_history': true,
+                                    });
+                                  }
+
+                                  var currentFallbackIdx = items.length;
+                                  soldMap.forEach((accountId, soldData) {
+                                    if (accountIdsInHistory.contains(accountId)) return;
+                                    items.add({
+                                      'history_id': 'sold_$accountId',
+                                      'account_id': accountId,
+                                      'transaction_code': 300001 + currentFallbackIdx,
+                                      'account_code': (soldData['account_code'] ?? '-').toString(),
+                                      'amount': _asDouble(soldData['price']),
+                                      'created_at': soldData['sold_at'] as Timestamp?,
+                                      'from_history': false,
+                                    });
+                                    currentFallbackIdx++;
+                                  });
+
+                                  return Column(
+                                    children: [
+                                      Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.86),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.7)),
+                                        ),
+                                        child: ListView.separated(
+                                          shrinkWrap: true,
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          itemCount: items.length,
+                                          separatorBuilder: (_, __) => Divider(height: 1, color: Colors.orange.shade100),
+                                          itemBuilder: (context, index) {
+                                            final item = items[index];
+                                            final accountId = (item['account_id'] ?? '').toString();
+                                            final soldData = soldMap[accountId];
+                                            final statusText = (soldData?['status'] ?? 'Đã bán').toString();
+                                            final historyId = (item['history_id'] ?? '').toString();
+
+                                            return _AnimatedHistoryItem(
+                                              key: ValueKey('item_${historyId}_$index'),
+                                              vsync: this,
+                                              index: index,
+                                              child: ListTile(
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                                title: Text(
+                                                  'Mã giao dịch #${item['transaction_code']} - Nick #${item['account_code']}',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                                ),
+                                                subtitle: Text(
+                                                  'Giá: ${_formatMoney(item['amount'] as double)} | Thời gian: ${_formatDate(item['created_at'] as Timestamp?)} | Trạng thái: $statusText',
+                                                ),
+                                                trailing: (item['from_history'] == true && historyId.isNotEmpty && !historyId.startsWith('sold_'))
+                                                    ? ElevatedButton(
+                                                  onPressed: () => _showTransactionDetail(
+                                                    historyId,
+                                                    item['account_code'],
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: const Color(0xFFF97316),
+                                                    foregroundColor: Colors.white,
+                                                  ),
+                                                  child: const Text('Xem chi tiết giao dịch'),
+                                                )
+                                                    : const Text('Dữ liệu bổ sung', style: TextStyle(fontSize: 12)),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
                           ),
-                        );
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 50),
-                const HomeFooter(),
-              ],
+                          const SizedBox(height: 50),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const HomeFooter(),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        }
       ),
     );
   }
@@ -296,6 +315,7 @@ class _AnimatedHistoryItem extends StatefulWidget {
   final Widget child;
 
   const _AnimatedHistoryItem({
+    super.key,
     required this.vsync,
     required this.index,
     required this.child,
