@@ -305,6 +305,8 @@ class _UserMenuButtonState extends State<UserMenuButton> {
             Navigator.pushNamed(context, '/admin-accounts');
           } else if (value == 'admin-users') {
             Navigator.pushNamed(context, '/admin-users');
+          } else if (value == 'admin-stats') {
+            Navigator.pushNamed(context, '/admin-stats');
           }
         },
         child: AnimatedContainer(
@@ -349,6 +351,10 @@ class _UserMenuButtonState extends State<UserMenuButton> {
         ),
         itemBuilder: (context) => [
           if (widget.auth.isAdmin) ...[
+            PopupMenuItem<String>(
+              value: 'admin-stats',
+              child: _buildPopupItem(Icons.bar_chart, 'Thống kê báo cáo'),
+            ),
             PopupMenuItem<String>(
               value: 'admin',
               child: _buildPopupItem(Icons.settings, 'Quản lý tài khoản'),

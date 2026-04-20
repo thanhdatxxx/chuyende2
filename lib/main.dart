@@ -15,6 +15,7 @@ import 'screens/payment_screen.dart';
 import 'screens/history_transaction_detail_screen.dart';
 import 'screens/admin_account_manager.dart';
 import 'screens/admin_user_manager.dart';
+import 'screens/admin_statistics_screen.dart';
 import 'screens/detail_screen.dart';
 import 'widgets/ui_effects.dart';
 
@@ -80,6 +81,7 @@ class MyApp extends StatelessWidget {
           '/bank-atm': (context) => const BankScreen(initialMode: DepositMode.atm),
           '/admin-accounts': (context) => const AdminAccountManager(),
           '/admin-users': (context) => const AdminUserManager(),
+          '/admin-stats': (context) => const AdminStatisticsScreen(),
         },
       ),
     );
