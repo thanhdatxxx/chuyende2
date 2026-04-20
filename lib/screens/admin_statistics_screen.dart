@@ -47,7 +47,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
     }
   }
 
-  Future<void> _exportToExcel(List<QueryDocumentSnapshot> docs, double totalRevenue, double totalDeposit) async {
+  Future<void> _exportToExcel(List<QueryDocumentSnapshot> docs, double totalRevenue, double totalDeposit, int soldAccCount) async {
     try {
       final now = DateTime.now();
       final suggestedFileName = "BaoCao_Shop_${_getFilterText().replaceAll(' ', '_')}_${DateFormat('ddMMyyyy').format(now)}.csv";
@@ -60,22 +60,31 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
       csv += "Thời điểm xuất:,${DateFormat('dd/MM/yyyy HH:mm').format(now)}\n\n";
 
       csv += "--- TỔNG QUAN DOANH THU ---\n";
-      csv += "Hạng mục,Giá trị (VNĐ)\n";
-      csv += "Doanh thu bán tài khoản,${totalRevenue.toInt()}\n";
-      csv += "Tiền người dùng nạp,${totalDeposit.toInt()}\n";
-      csv += "Lợi nhuận ròng,${totalRevenue.toInt()}\n\n";
+      csv += "Hạng mục,Giá trị\n";
+      csv += "Doanh thu bán tài khoản,${totalRevenue.toInt()} VNĐ\n";
+      csv += "Số lượng acc đã bán,$soldAccCount acc\n";
+      csv += "Tiền người dùng nạp,${totalDeposit.toInt()} VNĐ\n";
+      csv += "Lợi nhuận ròng,${totalRevenue.toInt()} VNĐ\n\n";
 
       csv += "--- CHI TIẾT GIAO DỊCH ---\n";
-      csv += "STT,Loại,Người dùng,Số tiền,Nội dung,Thời gian\n";
+      csv += "STT,Loại,Người dùng,Số tiền,Nội dung/Mã Acc,Thời gian\n";
       
       for (int i = 0; i < docs.length; i++) {
         final data = docs[i].data() as Map<String, dynamic>;
-        final type = data['type'] == 'purchase' ? 'Mua acc' : 'Nạp tiền';
+        final isPurchase = data['type'] == 'purchase';
+        final type = isPurchase ? 'Mua acc' : 'Nạp tiền';
         final user = (data['user_name'] ?? 'N/A').toString().replaceAll(',', ' ');
         final amount = (data['amount'] ?? 0).toInt();
         final createdAt = (data['created_at'] as Timestamp?)?.toDate() ?? now;
-        final timeStr = " " + DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
-        final detail = (data['method'] ?? (data['type'] == 'purchase' ? 'Mua acc game' : 'Nạp ví')).toString().replaceAll(',', ' ');
+        final timeStr = " ${DateFormat('dd/MM/yyyy HH:mm').format(createdAt)}";
+        
+        String detail = "";
+        if (isPurchase) {
+          final accCode = data['account_code'] ?? 'N/A';
+          detail = "Mã acc: #$accCode";
+        } else {
+          detail = (data['method'] == 'card' ? 'Nạp thẻ cào' : 'Nạp ví ATM/Momo');
+        }
         
         csv += "${i + 1},$type,$user,$amount,$detail,$timeStr\n";
       }
@@ -235,8 +244,11 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
             }
           } else if (type == 'deposit') {
             totalDeposit += amount;
-            if (data['method'] == 'card') cardRev += amount;
-            else atmRev += amount;
+            if (data['method'] == 'card') {
+              cardRev += amount;
+            } else {
+              atmRev += amount;
+            }
           }
         }
 
@@ -257,7 +269,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 25),
               child: ElevatedButton.icon(
-                onPressed: () => _exportToExcel(filteredDocs, totalRevenue, totalDeposit),
+                onPressed: () => _exportToExcel(filteredDocs, totalRevenue, totalDeposit, soldAccCount),
                 icon: const Icon(Icons.download),
                 label: const Text('XUẤT BÁO CÁO EXCEL', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
@@ -344,7 +356,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
               return ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: (isPurchase ? Colors.red : Colors.green).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: (isPurchase ? Colors.red : Colors.green).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                   child: Icon(isPurchase ? Icons.shopping_bag : Icons.account_balance_wallet, color: isPurchase ? Colors.redAccent : Colors.greenAccent, size: 24),
                 ),
                 title: Text(data['user_name'] ?? 'Ẩn danh', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -417,7 +429,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox();
         int totalUsers = snapshot.data!.docs.length;
-        double systemDebt = snapshot.data!.docs.fold(0.0, (sum, doc) => sum + ((doc.data() as Map)['balance'] ?? 0).toDouble());
+        double systemDebtValue = snapshot.data!.docs.fold(0.0, (acc, doc) => acc + ((doc.data() as Map)['balance'] ?? 0).toDouble());
 
         return Wrap(
           spacing: 20,
@@ -425,7 +437,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
           children: [
             _buildStatCard('THÀNH VIÊN', totalUsers.toString(), Colors.indigoAccent, Icons.person_add, 
                 onTap: () => Navigator.pushNamed(context, '/admin-users')),
-            _buildStatCard('SỐ DƯ HỆ THỐNG', currencyFormat.format(systemDebt), Colors.teal, Icons.account_balance_wallet, width: 400),
+            _buildStatCard('SỐ DƯ HỆ THỐNG', currencyFormat.format(systemDebtValue), Colors.teal, Icons.account_balance_wallet, width: 400),
           ],
         );
       },
@@ -447,10 +459,10 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
               width: effectiveWidth,
               padding: const EdgeInsets.all(25),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: color.withOpacity(0.4), width: 1.5),
-                boxShadow: [BoxShadow(color: color.withOpacity(0.05), blurRadius: 15)],
+                border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
+                boxShadow: [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 15)],
               ),
               child: Row(
                 children: [
@@ -462,10 +474,10 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(title, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.bold)),
+                            Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.bold)),
                             if (onTap != null) ...[
                               const SizedBox(width: 5),
-                              Icon(Icons.arrow_forward_ios, size: 10, color: Colors.white.withOpacity(0.3)),
+                              Icon(Icons.arrow_forward_ios, size: 10, color: Colors.white.withValues(alpha: 0.3)),
                             ],
                           ],
                         ),
@@ -522,21 +534,19 @@ class _LineChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (monthlyData.isEmpty) return;
 
-    // Cấu hình lề để hiển thị text trục Y
     double leftMargin = 45.0;
     double bottomMargin = 25.0;
     double chartWidth = size.width - leftMargin;
     double chartHeight = size.height - bottomMargin;
 
     final paint = Paint()..color = AppStyles.primaryColor..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
-    final fillPaint = Paint()..shader = ui.Gradient.linear(Offset(size.width / 2, 0), Offset(size.width / 2, chartHeight), [AppStyles.primaryColor.withOpacity(0.3), Colors.transparent]);
+    final fillPaint = Paint()..shader = ui.Gradient.linear(Offset(size.width / 2, 0), Offset(size.width / 2, chartHeight), [AppStyles.primaryColor.withValues(alpha: 0.3), Colors.transparent]);
     
     double maxVal = monthlyData.values.fold(0, (max, v) => v > max ? v : max);
     if (maxVal == 0) maxVal = 1;
 
     final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
 
-    // 1. Vẽ trục Y và nhãn số tiền
     final List<double> yLabels = [0, maxVal / 2, maxVal];
     for (var val in yLabels) {
       String labelText = val >= 1000000 ? '${(val / 1000000).toStringAsFixed(1)}M' : val >= 1000 ? '${(val / 1000).toInt()}K' : val.toInt().toString();
@@ -546,12 +556,10 @@ class _LineChartPainter extends CustomPainter {
       double yPos = chartHeight - (val / maxVal * chartHeight * 0.8);
       textPainter.paint(canvas, Offset(0, yPos - 7));
       
-      // Đường kẻ ngang (grid line)
-      final gridPaint = Paint()..color = Colors.white.withOpacity(0.05)..strokeWidth = 1;
+      final gridPaint = Paint()..color = Colors.white.withValues(alpha: 0.05)..strokeWidth = 1;
       canvas.drawLine(Offset(leftMargin, yPos), Offset(size.width, yPos), gridPaint);
     }
 
-    // 2. Tính toán điểm
     final points = <Offset>[];
     final stepX = chartWidth / 11;
     for (int i = 1; i <= 12; i++) {
@@ -559,23 +567,22 @@ class _LineChartPainter extends CustomPainter {
       points.add(Offset(leftMargin + (i - 1) * stepX, chartHeight - (val / maxVal * chartHeight * 0.8)));
     }
 
-    // 3. Vẽ đường biểu đồ và vùng fill
     final path = Path();
     path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < points.length; i++) path.lineTo(points[i].dx, points[i].dy);
+    for (int i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
     
     final fillPath = Path.from(path)..lineTo(points.last.dx, chartHeight)..lineTo(leftMargin, chartHeight)..close();
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, paint);
 
-    // 4. Vẽ các điểm (dots)
     final dotPaint = Paint()..color = Colors.white;
     for (var p in points) {
       canvas.drawCircle(p, 4, dotPaint);
       canvas.drawCircle(p, 2, paint);
     }
     
-    // 5. Vẽ nhãn trục X (Tháng)
     for (int i = 1; i <= 12; i += 2) {
       textPainter.text = TextSpan(text: 'T$i', style: const TextStyle(color: Colors.white38, fontSize: 10));
       textPainter.layout();
