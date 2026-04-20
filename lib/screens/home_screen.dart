@@ -102,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Thay đổi vị trí nút nhạc trên Mobile
           Positioned(
             bottom: isMobile ? 80 : null,
             top: isMobile ? null : 14,
@@ -150,12 +149,21 @@ class _HomeScreenState extends State<HomeScreen> {
         final available = filtered.where((d) => !_isSoldStatus(d['status'])).toList();
         final sold = filtered.where((d) => _isSoldStatus(d['status'])).toList();
 
+        // Phân trang cho tài khoản còn trống
+        final int availableStartIndex = (currentPage - 1) * itemsPerPage;
+        final pagedAvailable = available.skip(availableStartIndex).take(itemsPerPage).toList();
+
+        // Phân trang cho tài khoản đã bán
+        final int soldStartIndex = (soldCurrentPage - 1) * soldItemsPerPage;
+        final pagedSold = sold.skip(soldStartIndex).take(soldItemsPerPage).toList();
+
         return Column(children: [
-          _buildGrid(available, (currentPage - 1) * itemsPerPage),
+          _buildGrid(pagedAvailable, availableStartIndex),
           _buildPagination((available.length / itemsPerPage).ceil(), currentPage, (p) => setState(() => currentPage = p)),
           if (sold.isNotEmpty) ...[
             const Padding(padding: EdgeInsets.all(16), child: Align(alignment: Alignment.centerLeft, child: Text('TÀI KHOẢN ĐÃ BÁN', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange)))),
-            _buildGrid(sold, (soldCurrentPage - 1) * soldItemsPerPage),
+            _buildGrid(pagedSold, soldStartIndex),
+            _buildPagination((sold.length / soldItemsPerPage).ceil(), soldCurrentPage, (p) => setState(() => soldCurrentPage = p)),
           ]
         ]);
       },
