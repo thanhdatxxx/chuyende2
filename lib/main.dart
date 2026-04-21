@@ -5,6 +5,8 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/background_music_service.dart';
 import 'services/cache_service.dart';
+import 'config/env.dart';
+import 'services/navigation_service.dart'; // Import NavigationService
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -18,6 +20,7 @@ import 'screens/admin_user_manager.dart';
 import 'screens/admin_statistics_screen.dart';
 import 'screens/detail_screen.dart';
 import 'widgets/ui_effects.dart';
+import 'widgets/ai_chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,24 +45,33 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Shop Liên Quân Mobile',
+        navigatorKey: NavigationService.navigatorKey, // Sử dụng navigatorKey từ NavigationService
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
-          return ClipRect(
-            child: Stack(
-              clipBehavior: Clip.hardEdge,
-              children: [
-                child,
-                if (_showContactButton)
-                  const Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: SafeArea(
-                      child: SizedBox(width: 104, child: ExpandableContactButton()),
-                    ),
+          return Overlay(
+            initialEntries: [
+              OverlayEntry(
+                builder: (context) => ClipRect(
+                  child: Stack(
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      child,
+                      if (_showContactButton)
+                        const Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: SafeArea(
+                            child: SizedBox(width: 104, child: ExpandableContactButton()),
+                          ),
+                        ),
+                      // AI Chatbot Floating Widget
+                      AIChatBot(apiKey: Env.geminiApiKey),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
           );
         },
         theme: ThemeData(

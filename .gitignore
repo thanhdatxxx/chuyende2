@@ -18,6 +18,12 @@ migrate_working_dir/
 *.iws
 .idea/
 
+# Loại bỏ file cấu hình cá nhân
+devtools_options.yaml
+.cursorrules
+# Secret config files
+lib/config/env.dart
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
