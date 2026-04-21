@@ -5,6 +5,7 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:excel/excel.dart' as ex; // Prefix 'ex' để tránh xung đột Border, TextSpan
 import '../widgets/ui_effects.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/home_footer.dart';
@@ -50,33 +51,136 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
   Future<void> _exportToExcel(List<QueryDocumentSnapshot> docs, double totalRevenue, double totalDeposit, int soldAccCount) async {
     try {
       final now = DateTime.now();
-      final suggestedFileName = "BaoCao_Shop_${_getFilterText().replaceAll(' ', '_')}_${DateFormat('ddMMyyyy').format(now)}.csv";
+      // Đã sửa định dạng ngày thành dd.MM.yyyy (ví dụ: 21.04.2026)
+      final suggestedFileName = "BaoCao_Shop_${_getFilterText().replaceAll(' ', '_')}_${DateFormat('dd.MM.yyyy').format(now)}.xlsx";
       
-      String csv = "\uFEFF"; 
-      
-      csv += "BÁO CÁO THỐNG KÊ DOANH THU & GIAO DỊCH\n";
-      csv += "Đơn vị:,Shop Liên Quân Mobile\n";
-      csv += "Phạm vi:,Thống kê ${_getFilterText()}\n";
-      csv += "Thời điểm xuất:,${DateFormat('dd/MM/yyyy HH:mm').format(now)}\n\n";
+      var excel = ex.Excel.createExcel();
+      var sheet = excel['BaoCao'];
+      excel.delete('Sheet1'); 
 
-      csv += "--- TỔNG QUAN DOANH THU ---\n";
-      csv += "Hạng mục,Giá trị\n";
-      csv += "Doanh thu bán tài khoản,${totalRevenue.toInt()} VNĐ\n";
-      csv += "Số lượng acc đã bán,$soldAccCount acc\n";
-      csv += "Tiền người dùng nạp,${totalDeposit.toInt()} VNĐ\n";
-      csv += "Lợi nhuận ròng,${totalRevenue.toInt()} VNĐ\n\n";
+      // --- ĐỊNH NGHĨA STYLES ---
+      var titleStyle = ex.CellStyle(
+        bold: true,
+        fontSize: 16,
+        horizontalAlign: ex.HorizontalAlign.Center,
+      );
 
-      csv += "--- CHI TIẾT GIAO DỊCH ---\n";
-      csv += "STT,Loại,Người dùng,Số tiền,Nội dung/Mã Acc,Thời gian\n";
+      var headerStyle = ex.CellStyle(
+        bold: true,
+        backgroundColorHex: ex.ExcelColor.fromHexString('#D3D3D3'), 
+        horizontalAlign: ex.HorizontalAlign.Center,
+        verticalAlign: ex.VerticalAlign.Center,
+        leftBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        rightBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        topBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        bottomBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+      );
+
+      var cellStyle = ex.CellStyle(
+        horizontalAlign: ex.HorizontalAlign.Left,
+        verticalAlign: ex.VerticalAlign.Center,
+        leftBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        rightBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        topBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        bottomBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+      );
+
+      var cellCenterStyle = ex.CellStyle(
+        horizontalAlign: ex.HorizontalAlign.Center,
+        verticalAlign: ex.VerticalAlign.Center,
+        leftBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        rightBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        topBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+        bottomBorder: ex.Border(borderStyle: ex.BorderStyle.Thin),
+      );
+
+      // Thiết lập độ rộng cột - Tăng cột đầu tiên (STT) gấp 3 lần (8 -> 24)
+      sheet.setColumnWidth(0, 24); 
+      sheet.setColumnWidth(1, 20); 
+      sheet.setColumnWidth(2, 25); 
+      sheet.setColumnWidth(3, 15); 
+      sheet.setColumnWidth(4, 35); 
+      sheet.setColumnWidth(5, 25); 
+
+      int rowIndex = 0;
+
+      // 1. TIÊU ĐỀ CHÍNH
+      var titleCell = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex));
+      titleCell.value = ex.TextCellValue("BÁO CÁO CHI TIẾT KINH DOANH SHOP LIÊN QUÂN");
+      titleCell.cellStyle = titleStyle;
+      sheet.merge(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), 
+                  ex.CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: rowIndex));
       
+      rowIndex += 2;
+
+      // THÔNG TIN CHUNG
+      void addInfoRow(String label, String value) {
+        sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = ex.TextCellValue(label);
+        sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = ex.TextCellValue(value);
+        sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).cellStyle = ex.CellStyle(bold: true);
+        rowIndex++;
+      }
+
+      addInfoRow("Đơn vị:", "Shop Liên Quân Mobile");
+      addInfoRow("Phạm vi:", "Thống kê ${_getFilterText()}");
+      addInfoRow("Thời điểm xuất:", DateFormat('dd/MM/yyyy HH:mm').format(now));
+      
+      rowIndex += 2;
+
+      // 2. TỔNG QUAN DOANH THU
+      var summaryTitle = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex));
+      summaryTitle.value = ex.TextCellValue("--- TỔNG QUAN DOANH THU ---");
+      summaryTitle.cellStyle = ex.CellStyle(bold: true);
+      rowIndex++;
+
+      List<String> sumHeaders = ["Hạng mục", "Giá trị"];
+      for (int i = 0; i < sumHeaders.length; i++) {
+        var c = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: rowIndex));
+        c.value = ex.TextCellValue(sumHeaders[i]);
+        c.cellStyle = headerStyle;
+      }
+      rowIndex++;
+
+      List<List<ex.CellValue>> summaryData = [
+        [ex.TextCellValue("Doanh thu bán acc"), ex.TextCellValue("${totalRevenue.toInt()} VNĐ")],
+        [ex.TextCellValue("Số lượng acc đã bán"), ex.IntCellValue(soldAccCount)],
+        [ex.TextCellValue("Tổng tiền khách nạp"), ex.TextCellValue("${totalDeposit.toInt()} VNĐ")],
+        [ex.TextCellValue("Lợi nhuận ròng"), ex.TextCellValue("${totalRevenue.toInt()} VNĐ")],
+      ];
+
+      for (var row in summaryData) {
+        for (int i = 0; i < row.length; i++) {
+          var c = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: rowIndex));
+          c.value = row[i];
+          c.cellStyle = cellStyle;
+        }
+        rowIndex++;
+      }
+
+      rowIndex += 2;
+
+      // 3. CHI TIẾT GIAO DỊCH
+      var detailTitle = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex));
+      detailTitle.value = ex.TextCellValue("--- CHI TIẾT GIAO DỊCH ---");
+      detailTitle.cellStyle = ex.CellStyle(bold: true);
+      rowIndex++;
+
+      List<String> tableHeaders = ["STT", "Loại Giao Dịch", "Khách Hàng", "Số Tiền", "Nội Dung / Mã Acc", "Thời Gian"];
+      for (int i = 0; i < tableHeaders.length; i++) {
+        var c = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: rowIndex));
+        c.value = ex.TextCellValue(tableHeaders[i]);
+        c.cellStyle = headerStyle;
+      }
+      rowIndex++;
+
       for (int i = 0; i < docs.length; i++) {
         final data = docs[i].data() as Map<String, dynamic>;
         final isPurchase = data['type'] == 'purchase';
         final type = isPurchase ? 'Mua acc' : 'Nạp tiền';
-        final user = (data['user_name'] ?? 'N/A').toString().replaceAll(',', ' ');
+        final user = (data['user_name'] ?? 'N/A').toString();
         final amount = (data['amount'] ?? 0).toInt();
         final createdAt = (data['created_at'] as Timestamp?)?.toDate() ?? now;
-        final timeStr = " ${DateFormat('dd/MM/yyyy HH:mm').format(createdAt)}";
+        final timeStr = DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
         
         String detail = "";
         if (isPurchase) {
@@ -85,18 +189,26 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
         } else {
           detail = (data['method'] == 'card' ? 'Nạp thẻ cào' : 'Nạp ví ATM/Momo');
         }
-        
-        csv += "${i + 1},$type,$user,$amount,$detail,$timeStr\n";
+
+        List<ex.CellValue> rowData = [
+          ex.IntCellValue(i + 1),
+          ex.TextCellValue(type),
+          ex.TextCellValue(user),
+          ex.IntCellValue(amount),
+          ex.TextCellValue(detail),
+          ex.TextCellValue(timeStr)
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          var c = sheet.cell(ex.CellIndex.indexByColumnRow(columnIndex: j, rowIndex: rowIndex));
+          c.value = rowData[j];
+          c.cellStyle = (j == 0 || j == 3) ? cellCenterStyle : cellStyle;
+        }
+        rowIndex++;
       }
 
-      final bytes = utf8.encode(csv);
-      final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", suggestedFileName)
-        ..click();
+      excel.save(fileName: suggestedFileName);
       
-      html.Url.revokeObjectUrl(url);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất báo cáo: $e'), backgroundColor: Colors.redAccent));
@@ -356,7 +468,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
               return ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: (isPurchase ? Colors.red : Colors.green).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: (isPurchase ? Colors.red : Colors.green).withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
                   child: Icon(isPurchase ? Icons.shopping_bag : Icons.account_balance_wallet, color: isPurchase ? Colors.redAccent : Colors.greenAccent, size: 24),
                 ),
                 title: Text(data['user_name'] ?? 'Ẩn danh', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -380,8 +492,7 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
         final now = DateTime.now();
         final docs = snapshot.data!.docs;
         int totalCount = docs.length;
-        int soldCount = 0;
-        int oldStockCount = 0;
+        int soldCount = 0; int oldStockCount = 0;
         Map<String, int> rankStats = {};
 
         for (var doc in docs) {
@@ -459,10 +570,10 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
               width: effectiveWidth,
               padding: const EdgeInsets.all(25),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
+                color: color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-                boxShadow: [BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 15)],
+                border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+                boxShadow: [BoxShadow(color: color.withOpacity(0.05), blurRadius: 15)],
               ),
               child: Row(
                 children: [
@@ -474,10 +585,10 @@ class _AdminStatisticsScreenState extends State<AdminStatisticsScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(title, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.bold)),
+                            Text(title, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.bold)),
                             if (onTap != null) ...[
                               const SizedBox(width: 5),
-                              Icon(Icons.arrow_forward_ios, size: 10, color: Colors.white.withValues(alpha: 0.3)),
+                              Icon(Icons.arrow_forward_ios, size: 10, color: Colors.white.withOpacity(0.3)),
                             ],
                           ],
                         ),
@@ -540,7 +651,7 @@ class _LineChartPainter extends CustomPainter {
     double chartHeight = size.height - bottomMargin;
 
     final paint = Paint()..color = AppStyles.primaryColor..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
-    final fillPaint = Paint()..shader = ui.Gradient.linear(Offset(size.width / 2, 0), Offset(size.width / 2, chartHeight), [AppStyles.primaryColor.withValues(alpha: 0.3), Colors.transparent]);
+    final fillPaint = Paint()..shader = ui.Gradient.linear(Offset(size.width / 2, 0), Offset(size.width / 2, chartHeight), [AppStyles.primaryColor.withOpacity(0.3), Colors.transparent]);
     
     double maxVal = monthlyData.values.fold(0, (max, v) => v > max ? v : max);
     if (maxVal == 0) maxVal = 1;
@@ -556,7 +667,7 @@ class _LineChartPainter extends CustomPainter {
       double yPos = chartHeight - (val / maxVal * chartHeight * 0.8);
       textPainter.paint(canvas, Offset(0, yPos - 7));
       
-      final gridPaint = Paint()..color = Colors.white.withValues(alpha: 0.05)..strokeWidth = 1;
+      final gridPaint = Paint()..color = Colors.white.withOpacity(0.05)..strokeWidth = 1;
       canvas.drawLine(Offset(leftMargin, yPos), Offset(size.width, yPos), gridPaint);
     }
 
