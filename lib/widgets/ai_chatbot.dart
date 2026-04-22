@@ -1,9 +1,11 @@
 import 'dart:ui';
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/ai_service.dart';
 import '../services/navigation_service.dart';
 import '../services/auth_service.dart';
@@ -136,14 +138,10 @@ class _AIChatBotState extends State<AIChatBot> {
 
   Future<void> _handleViewDetail(String id) async {
     try {
-      // 1. Thử tìm theo Document ID trước
       var doc = await FirebaseFirestore.instance.collection('accounts').doc(id).get();
-      
       if (!doc.exists) {
-        // 2. Thử tìm theo field 'id' (mã số hiển thị)
         var query = await FirebaseFirestore.instance.collection('accounts').where('id', isEqualTo: id).limit(1).get();
         if (query.docs.isEmpty) {
-          // 3. Thử tìm theo field 'id' nhưng là kiểu số
           final numericId = int.tryParse(id);
           if (numericId != null) {
             query = await FirebaseFirestore.instance.collection('accounts').where('id', isEqualTo: numericId).limit(1).get();
@@ -155,8 +153,6 @@ class _AIChatBotState extends State<AIChatBot> {
       if (doc.exists && mounted) {
         final data = doc.data() as Map<String, dynamic>;
         final displayCode = int.tryParse(data['id']?.toString() ?? '') ?? 123001;
-        
-        // Sử dụng NavigationService.navigatorKey để điều hướng
         NavigationService.navigatorKey.currentState?.pushNamed('/detail', arguments: {
           'docId': doc.id,
           'displayCode': displayCode,
@@ -164,13 +160,11 @@ class _AIChatBotState extends State<AIChatBot> {
         });
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Không tìm thấy thông tin chi tiết của tài khoản này.')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không tìm thấy thông tin chi tiết.')));
         }
       }
     } catch (e) {
-      debugPrint("Lỗi khi mở chi tiết: $e");
+      debugPrint("Lỗi chi tiết: $e");
     }
   }
 
@@ -304,12 +298,10 @@ class _AIChatBotState extends State<AIChatBot> {
     final isUser = content.role == 'user';
     final text = content.parts.whereType<TextPart>().map((e) => e.text).join();
     
-    // Tìm các ID trong định dạng [ID:...] hoặc [MÃ:...]
-    final RegExp regExp = RegExp(r'\[(?:ID|MÃ):([\w-]+)\]', caseSensitive: false);
-    final List<String> accountIds = regExp.allMatches(text).map((m) => m.group(1)!).toList();
+    final RegExp accRegExp = RegExp(r'\[(?:ID|MÃ):([\w-]+)\]', caseSensitive: false);
+    final List<String> accountIds = accRegExp.allMatches(text).map((m) => m.group(1)!).toList();
     
-    // Giữ lại mã ID trong tin nhắn nhưng bỏ bớt phần tag kỹ thuật
-    String cleanText = text.replaceAllMapped(regExp, (match) => match.group(1)!)
+    String cleanText = text.replaceAllMapped(accRegExp, (match) => match.group(1)!)
                           .replaceAll("**", "")
                           .trim();
 
@@ -331,10 +323,7 @@ class _AIChatBotState extends State<AIChatBot> {
               ),
               border: Border.all(color: isUser ? Colors.white24 : Colors.white10),
             ),
-            child: Text(
-              cleanText.isEmpty && !isUser ? "Đang suy nghĩ..." : (cleanText.isEmpty ? text : cleanText),
-              style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-            ),
+            child: _buildRichText(cleanText.isEmpty && !isUser ? "Đang suy nghĩ..." : (cleanText.isEmpty ? text : cleanText)),
           ),
           if (accountIds.isNotEmpty && !isUser)
             Padding(
@@ -346,6 +335,66 @@ class _AIChatBotState extends State<AIChatBot> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRichText(String text) {
+    // Regex tìm link Zalo cụ thể hoặc các link nói chung
+    final RegExp linkRegExp = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
+    final matches = linkRegExp.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4));
+    }
+
+    List<InlineSpan> spans = [];
+    int lastIndex = 0;
+
+    for (var match in matches) {
+      // Thêm đoạn chữ thường trước link
+      if (match.start > lastIndex) {
+        String preText = text.substring(lastIndex, match.start);
+        // Nếu đoạn chữ trước kết thúc bằng "tại đây: ", chúng ta sẽ xử lý đặc biệt
+        if (preText.endsWith("tại đây: ")) {
+          spans.add(TextSpan(text: preText.substring(0, preText.length - 9)));
+          lastIndex = match.start; // Sẽ xử lý "tại đây" thành link ở bước sau
+        } else {
+          spans.add(TextSpan(text: preText));
+        }
+      }
+
+      String url = match.group(0)!;
+      bool isZalo = url.contains("zalo.me");
+
+      // Tạo Link
+      spans.add(TextSpan(
+        text: isZalo ? "tại đây" : url,
+        style: const TextStyle(
+          color: Colors.blueAccent,
+          fontWeight: FontWeight.bold,
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.parse(url);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+      ));
+
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(text: text.substring(lastIndex)));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4, fontFamily: 'Roboto'),
+        children: spans,
       ),
     );
   }
