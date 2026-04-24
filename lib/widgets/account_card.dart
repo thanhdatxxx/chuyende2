@@ -91,12 +91,13 @@ class AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayCode = 123001 + globalIndex;
+    final displayCode = int.tryParse(acc['id']?.toString() ?? '') ?? (123001 + globalIndex);
     final isSold = _isSoldStatus(acc['status']);
     final rankName = (acc['rank'] ?? '').toString();
     final imageUrl = (acc['image_url'] ?? '').toString();
     final price = acc['price'] is num ? (acc['price'] as num).toDouble() : 0.0;
     final NumberFormat currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    final description = (acc['description'] ?? acc['note'] ?? 'Tài khoản cực phẩm, trắng thông tin, giá siêu rẻ...').toString();
 
     return Card(
       elevation: 0,
@@ -105,7 +106,7 @@ class AccountCard extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            flex: 4,
+            flex: 4, 
             child: PreviewableNetworkImage(
               imageUrl: imageUrl,
               onTap: () => _showImagePreview(context, imageUrl),
@@ -122,38 +123,62 @@ class AccountCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(currencyFormat.format(price), style: AppStyles.accountPriceStyle),
                   const SizedBox(height: 8),
-                  Row(children: [
-                    const Text("Rank: ", style: AppStyles.accountInfoLabelStyle),
-                    const SizedBox(width: 2),
-                    Image.asset(_getRankIcon(rankName), width: 28, height: 28, fit: BoxFit.contain),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(rankName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _getRankColor(rankName)), overflow: TextOverflow.ellipsis)),
-                  ]),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center, 
-                    spacing: 8, 
-                    runSpacing: 4,
-                    children: [
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        Image.asset('assets/images/rank/tuong.png', width: 24, height: 24, fit: BoxFit.contain),
-                        const SizedBox(width: 4),
-                        Text("${acc['hero_count'] ?? 0} Tướng", style: AppStyles.accountValueStyle),
-                      ]),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        Image.asset('assets/images/rank/skin.png', width: 24, height: 24, fit: BoxFit.contain),
-                        const SizedBox(width: 4),
-                        Text("${acc['skin_count'] ?? 0} Skin", style: AppStyles.accountValueStyle),
-                      ]),
-                    ]
+                  
+                  // Wrap nội dung vào ScrollView để tránh lỗi tràn trên máy nhỏ
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            const Text("Rank: ", style: AppStyles.accountInfoLabelStyle),
+                            const SizedBox(width: 2),
+                            Image.asset(_getRankIcon(rankName), width: 28, height: 28, fit: BoxFit.contain),
+                            const SizedBox(width: 4),
+                            Expanded(child: Text(rankName, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _getRankColor(rankName)), overflow: TextOverflow.ellipsis)),
+                          ]),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center, 
+                            spacing: 8, 
+                            runSpacing: 4,
+                            children: [
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                                Image.asset('assets/images/rank/tuong.png', width: 24, height: 24, fit: BoxFit.contain),
+                                const SizedBox(width: 4),
+                                Text("${acc['hero_count'] ?? 0} Tướng", style: AppStyles.accountValueStyle),
+                              ]),
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                                Image.asset('assets/images/rank/skin.png', width: 24, height: 24, fit: BoxFit.contain),
+                                const SizedBox(width: 4),
+                                Text("${acc['skin_count'] ?? 0} Skin", style: AppStyles.accountValueStyle),
+                              ]),
+                            ]
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            description,
+                            style: const TextStyle(
+                              fontSize: 14, 
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const Spacer(),
+                  
+                  const SizedBox(height: 8),
                   Row(children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => onDetail(acc, id, displayCode),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12), // Tăng padding trở lại
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: const Text("Chi tiết", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -165,7 +190,7 @@ class AccountCard extends StatelessWidget {
                         onPressed: isSold ? null : onBuy,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isSold ? Colors.grey : AppStyles.primaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12), // Tăng padding trở lại
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         child: Text(isSold ? 'Đã bán' : 'Mua ngay', style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
@@ -201,17 +226,19 @@ class _PreviewableNetworkImageState extends State<PreviewableNetworkImage> {
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: widget.imageUrl.isEmpty ? null : widget.onTap,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            CachedNetworkImage(
-              imageUrl: widget.imageUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.grey.shade800),
-              errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.white),
-            ),
-            if (_isHovered)
+            widget.imageUrl.isEmpty 
+              ? Container(color: Colors.grey.shade800, child: const Icon(Icons.broken_image, color: Colors.white))
+              : CachedNetworkImage(
+                  imageUrl: widget.imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey.shade800),
+                  errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.white),
+                ),
+            if (_isHovered && widget.imageUrl.isNotEmpty)
               Container(
                 color: Colors.black38,
                 child: const Center(child: Icon(Icons.zoom_in, color: Colors.white, size: 40)),

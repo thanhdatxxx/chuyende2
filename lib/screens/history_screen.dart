@@ -185,10 +185,10 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                     final data = doc.data() as Map<String, dynamic>;
                                     final accountId = (data['account_id'] ?? '').toString();
                                     
-                                    // Sửa lỗi account_code #-: Lấy từ soldMap nếu history bị thiếu
-                                    dynamic accountCode = data['account_code'];
-                                    if ((accountCode == null || accountCode.toString() == '-') && soldMap.containsKey(accountId)) {
-                                      accountCode = soldMap[accountId]?['account_code'];
+                                    // Sửa lỗi account_code #-: Ưu tiên lấy trường 'id' hoặc 'account_code'
+                                    dynamic accountCode = data['account_code'] ?? data['id'];
+                                    if ((accountCode == null || accountCode.toString() == '-' || accountCode.toString() == '0') && soldMap.containsKey(accountId)) {
+                                      accountCode = soldMap[accountId]?['id'] ?? soldMap[accountId]?['account_code'];
                                     }
 
                                     if (accountId.isNotEmpty) {
@@ -213,7 +213,7 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                       'history_id': 'sold_$accountId',
                                       'account_id': accountId,
                                       'transaction_code': 300001 + currentFallbackIdx,
-                                      'account_code': (soldData['account_code'] ?? '-').toString(),
+                                      'account_code': (soldData['id'] ?? soldData['account_code'] ?? '-').toString(),
                                       'amount': _asDouble(soldData['price']),
                                       'created_at': soldData['sold_at'] as Timestamp?,
                                       'from_history': false,
