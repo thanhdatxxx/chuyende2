@@ -109,7 +109,7 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Da sao chep $label')),
+      SnackBar(content: Text('Đã sao chép $label')),
     );
   }
 
@@ -201,24 +201,24 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
       builder: (context, constraints) {
         final imageSection = _buildImageSection();
         final infoSection = _buildInfoSection(displayCode, payload);
-        if (constraints.maxWidth > 900) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: imageSection),
-              const SizedBox(width: 30),
-              Expanded(flex: 2, child: infoSection),
-            ],
-          );
-        }
+        
         return SingleChildScrollView(
-          child: Column(
-            children: [
-              imageSection,
-              const SizedBox(height: 30),
-              infoSection,
-            ],
-          ),
+          child: constraints.maxWidth > 900
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: imageSection),
+                    const SizedBox(width: 30),
+                    Expanded(flex: 2, child: infoSection),
+                  ],
+                )
+              : Column(
+                  children: [
+                    imageSection,
+                    const SizedBox(height: 30),
+                    infoSection,
+                  ],
+                ),
         );
       },
     );
@@ -314,12 +314,12 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
                 label: 'Tài khoản:',
                 value: username,
                 isBold: true,
-                onCopy: () => _copyToClipboard(username, 'tai khoan'),
+                onCopy: () => _copyToClipboard(username, 'tài khoản'),
               ),
               _buildCredentialRow(
                 label: 'Mật khẩu:',
                 value: _showPassword ? password : '********',
-                onCopy: () => _copyToClipboard(password, 'mat khau'),
+                onCopy: () => _copyToClipboard(password, 'mật khẩu'),
                 onToggleVisibility: () => setState(() => _showPassword = !_showPassword),
                 isPasswordVisible: _showPassword,
               ),
@@ -339,9 +339,13 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
             child: Text(label, style: const TextStyle(fontSize: 15, color: Color(0xFF64748B))),
           ),
           if (trailing != null) trailing,
-          Text(
-            value,
-            style: TextStyle(fontSize: 15, fontWeight: isBold ? FontWeight.bold : FontWeight.w500),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 15, fontWeight: isBold ? FontWeight.bold : FontWeight.w500),
+            ),
           ),
         ],
       ),
@@ -374,12 +378,12 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
           ),
           if (onToggleVisibility != null)
             IconButton(
-              tooltip: isPasswordVisible ? 'An mat khau' : 'Hien mat khau',
+              tooltip: isPasswordVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu',
               onPressed: onToggleVisibility,
               icon: Icon(isPasswordVisible ? Icons.visibility_off : Icons.visibility),
             ),
           IconButton(
-            tooltip: 'Sao chep',
+            tooltip: 'Sao chép',
             onPressed: onCopy,
             icon: const Icon(Icons.copy_rounded),
           ),
@@ -392,7 +396,7 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 15)),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
         Text(
           _formatMoney(price),
           style: TextStyle(
@@ -503,4 +507,3 @@ class _HistoryTransactionDetailScreenState extends State<HistoryTransactionDetai
     );
   }
 }
-

@@ -74,7 +74,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
       return (data['description'] ?? 'Cập nhật thông tin tài khoản').toString();
     }
     final description = (data['description'] ?? '').toString();
-    return description.isEmpty ? 'Cập nhật tài khoản' : description;
+    return description.isEmpty ? 'Hoạt động hệ thống' : description;
   }
 
   @override
@@ -416,6 +416,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
         'action': 'change_password',
         'description': 'Đổi mật khẩu tài khoản',
         'user_name': auth.userName,
+        'user_id': auth.userId,
         'created_at': FieldValue.serverTimestamp(),
       });
 
@@ -454,7 +455,7 @@ class _DetailUserPageState extends State<DetailUserPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'NHẬT KỲ HOẠT ĐỘNG',
+            'NHẬT KÝ HOẠT ĐỘNG',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -529,7 +530,10 @@ class _DetailUserPageState extends State<DetailUserPage> {
               return StreamBuilder<QuerySnapshot>(
                 stream: _firestore
                     .collection('history')
-                    .where('user_name', isEqualTo: auth.userName)
+                    .where(Filter.or(
+                      Filter('user_name', isEqualTo: auth.userName),
+                      Filter('user_id', isEqualTo: auth.userId),
+                    ))
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {

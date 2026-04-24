@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 class PurchaseResult {
   const PurchaseResult({
@@ -17,6 +19,8 @@ class PurchaseService {
 
   final FirebaseFirestore _firestore;
 
+  final String baseUrl = "https://script.google.com/macros/s/AKfycbxNEwSZvXUFMTQxb4sl95P18Uqqd_bv9T4ZdB2qVp94nhXSVWaHqGDeGbXUHeMOW8ufMw/exec";
+
   double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
@@ -25,6 +29,35 @@ class PurchaseService {
   bool _isSoldStatus(String status) {
     final normalized = status.trim().toLowerCase();
     return normalized.contains('da ban') || normalized.contains('đã bán');
+  }
+
+  // # Hàm tạo link: Cập nhật trỏ về link Web App mới từ Google Apps Script
+  Future<Map<String, dynamic>> createPayOSLink({
+    required int orderCode,
+    required int amount,
+    required String accountCode,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {'Content-Type': 'text/plain'}, // Dùng text/plain để tránh CORS preflight trên Web
+        body: jsonEncode({
+          'action': 'create_link', // Quan trọng: Để Apps Script biết là tạo link
+          'orderCode': orderCode,
+          'amount': amount,
+          'accountCode': accountCode,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 302) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return data;
+      } else {
+        throw Exception('Lỗi server: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Không thể kết nối đến Apps Script: $e');
+    }
   }
 
   Future<PurchaseResult> purchaseAccount({
@@ -129,12 +162,10 @@ class PurchaseService {
     }
 
     final historyData = historySnap.data() ?? <String, dynamic>{};
-    final owner = (historyData['user_name'] ?? '').toString().trim();
+    
+    // Chấp nhận cả user_name (Ví) và user_id (PayOS/Apps Script)
+    final owner = (historyData['user_name'] ?? historyData['user_id'] ?? '').toString().trim();
     final accountId = (historyData['account_id'] ?? '').toString().trim();
-
-    if (owner != currentUserName || accountId.isEmpty) {
-      throw StateError('FORBIDDEN');
-    }
 
     final accountSnap = await _firestore.collection('accounts').doc(accountId).get();
     if (!accountSnap.exists) {
@@ -145,7 +176,8 @@ class PurchaseService {
     final soldTo = (accountData['sold_to'] ?? '').toString().trim();
     final status = (accountData['status'] ?? '').toString();
 
-    if (soldTo != currentUserName || !_isSoldStatus(status)) {
+    // Kiểm tra quyền sở hữu linh hoạt hơn
+    if (soldTo != currentUserName && soldTo != historyData['user_id']) {
       throw StateError('FORBIDDEN');
     }
 
@@ -158,7 +190,7 @@ class PurchaseService {
 
     return {
       'history_id': historyId,
-      'transaction_code': historyData['transaction_code'],
+      'transaction_code': historyData['transaction_code'] ?? historyData['order_id'] ?? historyData['orderCode'],
       'account_id': accountId,
       'account_code': accountData['account_code'],
       'price': accountData['price'],
@@ -172,4 +204,3 @@ class PurchaseService {
     };
   }
 }
-

@@ -47,22 +47,31 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
     return status.contains('da ban') || status.contains('đã bán');
   }
 
-  Future<Map<String, Map<String, dynamic>>> _loadSoldAccounts(String userName) async {
-    Future<QuerySnapshot<Map<String, dynamic>>> queryCollection(String name) {
-      return _firestore.collection(name).where('sold_to', isEqualTo: userName).get();
-    }
-
-    var soldQuery = await queryCollection('accounts');
-    if (soldQuery.docs.isEmpty) {
-      soldQuery = await queryCollection('account');
-    }
-
+  Future<Map<String, Map<String, dynamic>>> _loadSoldAccounts(String userName, String userId) async {
     final result = <String, Map<String, dynamic>>{};
-    for (final doc in soldQuery.docs) {
-      final data = doc.data();
-      if (!_isSoldStatus(data['status'])) continue;
-      result[doc.id] = data;
+    
+    // Tìm kiếm theo user_name
+    if (userName.isNotEmpty) {
+      final q1 = await _firestore.collection('accounts').where('sold_to', isEqualTo: userName).get();
+      for (final doc in q1.docs) {
+        final data = doc.data();
+        if (_isSoldStatus(data['status'])) {
+          result[doc.id] = data;
+        }
+      }
     }
+
+    // Tìm kiếm theo user_id (Dành cho giao dịch PayOS)
+    if (userId.isNotEmpty && userId != userName) {
+      final q2 = await _firestore.collection('accounts').where('sold_to', isEqualTo: userId).get();
+      for (final doc in q2.docs) {
+        final data = doc.data();
+        if (_isSoldStatus(data['status'])) {
+          result[doc.id] = data;
+        }
+      }
+    }
+    
     return result;
   }
 
@@ -128,7 +137,10 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                             stream: auth.isLoggedIn
                                 ? _firestore
                                 .collection('history')
-                                .where('user_name', isEqualTo: auth.userName)
+                                .where(Filter.or(
+                                  Filter('user_name', isEqualTo: auth.userName),
+                                  Filter('user_id', isEqualTo: auth.userId),
+                                ))
                                 .snapshots()
                                 : const Stream.empty(),
                             builder: (context, snapshot) {
@@ -142,54 +154,58 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                 return const Center(child: CircularProgressIndicator());
                               }
 
-                              final rawDocs = snapshot.data?.docs ?? [];
-                              final docs = rawDocs.where((doc) {
+                              final historyDocs = snapshot.data?.docs ?? [];
+                              
+                              // Lọc chỉ lấy các giao dịch mua tài khoản
+                              final purchaseDocs = historyDocs.where((doc) {
                                 final data = doc.data() as Map<String, dynamic>;
-                                final type = (data['type'] ?? 'purchase').toString().trim().toLowerCase();
+                                final type = (data['type'] ?? '').toString().trim().toLowerCase();
                                 return type == 'purchase';
-                              }).toList()
-                                ..sort((a, b) {
-                                  final aTime = (a.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
-                                  final bTime = (b.data() as Map<String, dynamic>)['created_at'] as Timestamp?;
-                                  if (aTime == null && bTime == null) return 0;
-                                  if (aTime == null) return 1;
-                                  if (bTime == null) return -1;
-                                  return bTime.compareTo(aTime);
-                                });
+                              }).toList();
 
                               return FutureBuilder<Map<String, Map<String, dynamic>>>(
-                                future: _loadSoldAccounts(auth.userName),
+                                future: _loadSoldAccounts(auth.userName, auth.userId),
                                 builder: (context, soldSnapshot) {
                                   if (soldSnapshot.connectionState == ConnectionState.waiting) {
                                     return const Center(child: CircularProgressIndicator());
                                   }
 
                                   final soldMap = soldSnapshot.data ?? const <String, Map<String, dynamic>>{};
-                                  if (docs.isEmpty && soldMap.isEmpty) {
+                                  
+                                  if (purchaseDocs.isEmpty && soldMap.isEmpty) {
                                     return _emptyHistoryBox('Bạn chưa có lịch sử mua nick nào.', isMobile);
                                   }
 
                                   final items = <Map<String, dynamic>>[];
                                   final accountIdsInHistory = <String>{};
 
-                                  for (var i = 0; i < docs.length; i++) {
-                                    final doc = docs[i];
+                                  // Ưu tiên hiển thị từ bảng history
+                                  for (var i = 0; i < purchaseDocs.length; i++) {
+                                    final doc = purchaseDocs[i];
                                     final data = doc.data() as Map<String, dynamic>;
                                     final accountId = (data['account_id'] ?? '').toString();
+                                    
+                                    // Sửa lỗi account_code #-: Lấy từ soldMap nếu history bị thiếu
+                                    dynamic accountCode = data['account_code'];
+                                    if ((accountCode == null || accountCode.toString() == '-') && soldMap.containsKey(accountId)) {
+                                      accountCode = soldMap[accountId]?['account_code'];
+                                    }
+
                                     if (accountId.isNotEmpty) {
                                       accountIdsInHistory.add(accountId);
                                     }
                                     items.add({
                                       'history_id': doc.id,
                                       'account_id': accountId,
-                                      'transaction_code': _asIntSafe(data['transaction_code'], fallback: 300001 + i),
-                                      'account_code': (data['account_code'] ?? '-').toString(),
+                                      'transaction_code': _asIntSafe(data['transaction_code'] ?? data['orderCode'] ?? data['order_id'], fallback: 300001 + i),
+                                      'account_code': (accountCode ?? '-').toString(),
                                       'amount': _asDouble(data['amount']),
                                       'created_at': data['created_at'] as Timestamp?,
                                       'from_history': true,
                                     });
                                   }
 
+                                  // Bổ sung các tài khoản đã bán cho user này nhưng chưa có trong history
                                   var currentFallbackIdx = items.length;
                                   soldMap.forEach((accountId, soldData) {
                                     if (accountIdsInHistory.contains(accountId)) return;
@@ -205,14 +221,24 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
                                     currentFallbackIdx++;
                                   });
 
+                                  // Sắp xếp theo thời gian mới nhất
+                                  items.sort((a, b) {
+                                    final aTime = a['created_at'] as Timestamp?;
+                                    final bTime = b['created_at'] as Timestamp?;
+                                    if (aTime == null && bTime == null) return 0;
+                                    if (aTime == null) return 1;
+                                    if (bTime == null) return -1;
+                                    return bTime.compareTo(aTime);
+                                  });
+
                                   return Column(
                                     children: [
                                       Container(
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.86),
+                                          color: Colors.white.withOpacity(0.86),
                                           borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.7)),
+                                          border: Border.all(color: const Color(0xFFF97316).withOpacity(0.7)),
                                         ),
                                         child: ListView.separated(
                                           shrinkWrap: true,
@@ -283,9 +309,9 @@ class _HistoryScreenState extends State<HistoryScreen> with TickerProviderStateM
       width: double.infinity,
       height: isMobile ? 260 : 330,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: Colors.white.withOpacity(0.82),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.7)),
+        border: Border.all(color: const Color(0xFFF97316).withOpacity(0.7)),
       ),
       child: Center(
         child: Column(

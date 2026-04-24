@@ -22,6 +22,7 @@ dependencies:
   hive_flutter: ^1.1.0
   google_generative_ai: 0.4.7
   excel: ^4.0.0
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:
