@@ -31,176 +31,172 @@ class PurchaseService {
     return normalized.contains('da ban') || normalized.contains('đã bán');
   }
 
-  // # Hàm tạo link: Cập nhật trỏ về link Web App mới từ Google Apps Script
-  Future<Map<String, dynamic>> createPayOSLink({
+  // 1. TẠO ĐƠN HÀNG CHỜ (PENDING)
+  Future<void> createPendingOrder({
     required int orderCode,
-    required int amount,
-    required String accountCode,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'text/plain'}, // Dùng text/plain để tránh CORS preflight trên Web
-        body: jsonEncode({
-          'action': 'create_link', // Quan trọng: Để Apps Script biết là tạo link
-          'orderCode': orderCode,
-          'amount': amount,
-          'accountCode': accountCode,
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 302) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return data;
-      } else {
-        throw Exception('Lỗi server: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Không thể kết nối đến Apps Script: $e');
-    }
-  }
-
-  Future<PurchaseResult> purchaseAccount({
-    required String userName,
-    required String accountId,
-    required int accountCode,
+    required String userId,
+    required String accountDocId,
+    required String id,
     required double price,
   }) async {
-    final userQuery = await _firestore
-        .collection('user')
-        .where('user_name', isEqualTo: userName)
-        .limit(1)
-        .get();
-
-    if (userQuery.docs.isEmpty) {
-      throw StateError('USER_NOT_FOUND');
-    }
-
-    final userRef = userQuery.docs.first.reference;
-    final accountRef = _firestore.collection('accounts').doc(accountId);
-    final counterRef = _firestore.collection('meta').doc('history_counter');
-    final historyRef = _firestore.collection('history').doc();
-
-    return _firestore.runTransaction<PurchaseResult>((transaction) async {
-      final userSnap = await transaction.get(userRef);
-      final accountSnap = await transaction.get(accountRef);
-      final counterSnap = await transaction.get(counterRef);
-
-      if (!accountSnap.exists) {
-        throw StateError('ACCOUNT_NOT_FOUND');
-      }
-
-      final currentBalance = _asDouble(userSnap.data()?['balance']);
-      final accountData = accountSnap.data() ?? <String, dynamic>{};
-      final status = (accountData['status'] ?? '').toString();
-
-      if (currentBalance < price) {
-        throw StateError('INSUFFICIENT_BALANCE');
-      }
-      if (_isSoldStatus(status)) {
-        throw StateError('ACCOUNT_SOLD');
-      }
-
-      final updatedBalance = currentBalance - price;
-      final lastCode = (counterSnap.data()?['last_code'] as num?)?.toInt() ?? 300000;
-      final transactionCode = lastCode + 1;
-
-      transaction.update(userRef, {
-        'balance': updatedBalance,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      transaction.update(accountRef, {
-        'status': 'Đã bán',
-        'sold_to': userName,
-        'sold_at': FieldValue.serverTimestamp(),
-      });
-      transaction.set(counterRef, {
-        'last_code': transactionCode,
-        'updated_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      transaction.set(historyRef, {
-        'type': 'purchase',
-        'user_name': userName,
-        'account_id': accountId,
-        'account_code': accountCode,
-        'transaction_code': transactionCode,
-        'amount': price,
-        'balance_after': updatedBalance,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      return PurchaseResult(
-        newBalance: updatedBalance,
-        transactionCode: transactionCode,
-        historyId: historyRef.id,
-      );
+    await _firestore.collection('orders').add({
+      'orderCode': orderCode,
+      'user_id': userId,
+      'account_id': accountDocId,
+      'id': id, 
+      'amount': price,
+      'status': 'pending',
+      'created_at': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<Map<String, String>> getTransactionCredentials({
-    required String historyId,
-    required String currentUserName,
+  // 2. TẠO LINK THANH TOÁN - Gửi ID tài khoản lên Apps Script
+  Future<Map<String, dynamic>> createPayOSLink({
+    required int orderCode,
+    required int amount,
+    required String accountIdReal, 
   }) async {
-    final detail = await getPurchasedAccountDetail(
-      historyId: historyId,
-      currentUserName: currentUserName,
-    );
+    try {
+      final String currentOrigin = Uri.base.origin;
+      final String returnUrl = "$currentOrigin/#/payment"; 
 
-    return {
-      'taikhoan': (detail['taikhoan'] ?? '').toString(),
-      'matkhau': (detail['matkhau'] ?? '').toString(),
-    };
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {'Content-Type': 'text/plain'},
+        body: jsonEncode({
+          'action': 'create_link',
+          'orderCode': orderCode,
+          'amount': amount,
+          'id': accountIdReal, 
+          'returnUrl': returnUrl, 
+        }),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      throw Exception('Lỗi kết nối PayOS: $e');
+    }
   }
 
+  // Cập nhật trạng thái khi HỦY trực tiếp trên Firestore (Dùng cho Tab cũ nhận biết)
+  Future<void> updateOrderCancel(int orderCode) async {
+    final query = await _firestore
+        .collection('orders')
+        .where('orderCode', isEqualTo: orderCode)
+        .limit(1)
+        .get();
+    
+    if (query.docs.isNotEmpty) {
+      await query.docs.first.reference.update({'status': 'cancelled'});
+    }
+  }
+
+  // Thông báo hủy qua Apps Script (Để hệ thống phía server biết)
+  Future<void> cancelOrder(int orderCode) async {
+    try {
+      await http.post(
+        Uri.parse(baseUrl),
+        headers: {'Content-Type': 'text/plain'},
+        body: jsonEncode({
+          'action': 'cancel_payment',
+          'orderCode': orderCode,
+        }),
+      );
+    } catch (e) {
+      print("Lỗi khi báo hủy đơn: $e");
+    }
+  }
+
+  // Lắng nghe kết quả thành công Realtime (Từ history)
+  Stream<DocumentSnapshot?> listenToPurchaseHistory(int orderCode) {
+    return _firestore
+        .collection('history')
+        .where('orderCode', isEqualTo: orderCode)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null);
+  }
+
+  // Lắng nghe trạng thái đơn hàng (Từ orders - Để biết khi nào bị cancelled)
+  Stream<DocumentSnapshot?> listenToPaymentStatus(int orderCode) {
+    return _firestore
+        .collection('orders')
+        .where('orderCode', isEqualTo: orderCode)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null);
+  }
+
+  // --- CÁC CHỨC NĂNG THANH TOÁN BẰNG VÍ (GIỮ NGUYÊN) ---
+
+  Future<PurchaseResult> purchaseAccount({
+    required String userName,
+    required String userId,
+    required String accountId, 
+    required int accountCode,
+    required double price,
+  }) async {
+    try {
+      if (userId.isEmpty || accountId.isEmpty) throw "Dữ liệu không hợp lệ.";
+      final userSnap = await _firestore.collection('user').doc(userId).get();
+      final accountSnap = await _firestore.collection('accounts').doc(accountId).get();
+      
+      if (!userSnap.exists) throw "Tài khoản không tồn tại.";
+      if (!accountSnap.exists) throw "Nick không tồn tại.";
+
+      final userData = userSnap.data()!;
+      final accountData = accountSnap.data()!;
+      final currentBalance = _asDouble(userData['balance']);
+      
+      if (currentBalance < price) throw "Số dư không đủ!";
+      if (_isSoldStatus(accountData['status'] ?? '')) throw "Nick đã bán!";
+
+      final int orderCode = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final double updatedBalance = currentBalance - price;
+
+      final batch = _firestore.batch();
+      final historyRef = _firestore.collection('history').doc();
+      final orderRef = _firestore.collection('orders').doc();
+
+      batch.update(_firestore.collection('user').doc(userId), {'balance': updatedBalance});
+      batch.update(_firestore.collection('accounts').doc(accountId), {'status': 'Đã bán', 'sold_to': userId, 'sold_at': FieldValue.serverTimestamp()});
+      
+      batch.set(orderRef, {'orderCode': orderCode, 'user_id': userId, 'account_id': accountId, 'amount': price, 'status': 'completed', 'created_at': FieldValue.serverTimestamp()});
+      batch.set(historyRef, {
+        'account_id': accountId, 'amount': price, 'created_at': FieldValue.serverTimestamp(),
+        'matkhau': accountData['matkhau'], 'orderCode': orderCode, 'status': 'Thành công',
+        'taikhoan': accountData['taikhoan'], 'type': 'purchase', 'user_id': userId,
+        'user_name': userName, 'balance_after': updatedBalance,
+      });
+
+      await batch.commit();
+      return PurchaseResult(newBalance: updatedBalance, transactionCode: orderCode, historyId: historyRef.id);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  // --- HÀM LẤY CHI TIẾT LỊCH SỬ (KHÔNG ĐƯỢC XÓA) ---
   Future<Map<String, dynamic>> getPurchasedAccountDetail({
     required String historyId,
     required String currentUserName,
   }) async {
     final historySnap = await _firestore.collection('history').doc(historyId).get();
-    if (!historySnap.exists) {
-      throw StateError('TRANSACTION_NOT_FOUND');
-    }
+    if (!historySnap.exists) throw "Giao dịch không tồn tại.";
 
-    final historyData = historySnap.data() ?? <String, dynamic>{};
-    
-    // Chấp nhận cả user_name (Ví) và user_id (PayOS/Apps Script)
-    final owner = (historyData['user_name'] ?? historyData['user_id'] ?? '').toString().trim();
-    final accountId = (historyData['account_id'] ?? '').toString().trim();
-
+    final historyData = historySnap.data()!;
+    final accountId = (historyData['account_id'] ?? '').toString();
     final accountSnap = await _firestore.collection('accounts').doc(accountId).get();
-    if (!accountSnap.exists) {
-      throw StateError('ACCOUNT_NOT_FOUND');
-    }
-
-    final accountData = accountSnap.data() ?? <String, dynamic>{};
-    final soldTo = (accountData['sold_to'] ?? '').toString().trim();
-    final status = (accountData['status'] ?? '').toString();
-
-    // Kiểm tra quyền sở hữu linh hoạt hơn
-    if (soldTo != currentUserName && soldTo != historyData['user_id']) {
-      throw StateError('FORBIDDEN');
-    }
-
-    final username = (accountData['taikhoan'] ?? '').toString();
-    final password = (accountData['matkhau'] ?? '').toString();
-
-    if (username.isEmpty || password.isEmpty) {
-      throw StateError('MISSING_CREDENTIALS');
-    }
 
     return {
+      if (accountSnap.exists) ...accountSnap.data()!,
       'history_id': historyId,
-      'transaction_code': historyData['transaction_code'] ?? historyData['order_id'] ?? historyData['orderCode'],
-      'account_id': accountId,
-      'account_code': accountData['account_code'],
-      'price': accountData['price'],
-      'rank': accountData['rank'],
-      'hero_count': accountData['hero_count'],
-      'skin_count': accountData['skin_count'],
-      'status': accountData['status'],
-      'image_url': accountData['image_url'],
-      'taikhoan': username,
-      'matkhau': password,
+      'orderCode': historyData['orderCode'],
+      'taikhoan': historyData['taikhoan'],
+      'matkhau': historyData['matkhau'],
+      'amount': historyData['amount'],
     };
+  }
+
+  Future<Map<String, String>> getTransactionCredentials({required String historyId, required String currentUserName}) async {
+    final detail = await getPurchasedAccountDetail(historyId: historyId, currentUserName: currentUserName);
+    return {'taikhoan': (detail['taikhoan'] ?? '').toString(), 'matkhau': (detail['matkhau'] ?? '').toString()};
   }
 }

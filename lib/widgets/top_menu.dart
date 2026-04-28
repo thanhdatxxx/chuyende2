@@ -87,13 +87,67 @@ class TopMenu extends StatelessWidget {
                 onTap: () => Navigator.pushNamed(context, '/history'),
               ),
               const SizedBox(width: 20),
-              const DepositMenuButton(),
+              _buildCustomDepositMenu(context),
             ],
             const SizedBox(width: 30),
             UserMenuButton(auth: auth),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCustomDepositMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      position: PopupMenuPosition.under,
+      offset: const Offset(8, 10),
+      color: Colors.white.withValues(alpha: 0.16),
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      onSelected: (value) {
+        if (value == 'card') {
+          Navigator.pushNamed(context, '/bank-card');
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          value: 'card',
+          child: Row(
+            children: [
+              const Icon(Icons.style, size: 18, color: Color(0xFFFFF7ED)),
+              const SizedBox(width: 12),
+              const Text(
+                'Nạp tiền thẻ',
+                style: TextStyle(color: Color(0xFFFFF7ED), fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.account_balance_wallet, size: 18, color: Color(0xFFF97316)),
+            SizedBox(width: 6),
+            Text(
+              'Nạp tiền',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFFFF7ED)),
+            ),
+            SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, color: Color(0xFFFFF7ED)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -115,7 +169,6 @@ class TopMenu extends StatelessWidget {
             if (value == 'register') Navigator.pushNamed(context, '/register');
             if (value == 'history') Navigator.pushNamed(context, '/history');
             if (value == 'deposit_card') Navigator.pushNamed(context, '/bank-card');
-            if (value == 'deposit_atm') Navigator.pushNamed(context, '/bank-atm');
             if (value == 'user_info') Navigator.pushNamed(context, '/user-detail');
             if (value == 'admin_acc') Navigator.pushNamed(context, '/admin-accounts');
             if (value == 'admin_user') Navigator.pushNamed(context, '/admin-users');
@@ -130,7 +183,6 @@ class TopMenu extends StatelessWidget {
               if (!auth.isAdmin) ...[
                 const PopupMenuItem(value: 'history', child: Text('Lịch sử mua', style: TextStyle(color: Color(0xFFFFF7ED)))),
                 const PopupMenuItem(value: 'deposit_card', child: Text('Nạp tiền thẻ', style: TextStyle(color: Color(0xFFFFF7ED)))),
-                const PopupMenuItem(value: 'deposit_atm', child: Text('Nạp tiền ATM', style: TextStyle(color: Color(0xFFFFF7ED)))),
               ],
               if (auth.isAdmin) ...[
                 const PopupMenuItem(value: 'admin_acc', child: Text('Quản lý tài khoản', style: TextStyle(color: Color(0xFFFFF7ED)))),

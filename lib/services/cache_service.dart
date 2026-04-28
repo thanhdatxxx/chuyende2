@@ -2,14 +2,35 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 class CacheService {
   static const String _accountsCacheBoxName = 'accounts_cache';
+  static const String _userBoxName = 'user_box';
   static const String _cacheExpiryKey = 'cache_expiry';
   static const Duration _cacheExpiry = Duration(hours: 6);
 
   static Future<void> initialize() async {
     await Hive.initFlutter();
     await Hive.openBox<dynamic>(_accountsCacheBoxName);
+    await Hive.openBox<dynamic>(_userBoxName);
   }
 
+  // --- User Persistence ---
+  static Future<void> saveUser(Map<String, dynamic> userData) async {
+    final box = Hive.box<dynamic>(_userBoxName);
+    await box.put('current_user', userData);
+  }
+
+  static Map<String, dynamic>? getUser() {
+    final box = Hive.box<dynamic>(_userBoxName);
+    final data = box.get('current_user');
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> clearUser() async {
+    final box = Hive.box<dynamic>(_userBoxName);
+    await box.delete('current_user');
+  }
+
+  // --- Accounts Cache ---
   static Future<void> cacheAccounts(List<Map<String, dynamic>> accounts) async {
     final box = Hive.box<dynamic>(_accountsCacheBoxName);
     try {
@@ -79,7 +100,3 @@ class CacheService {
     }
   }
 }
-
-
-
-
