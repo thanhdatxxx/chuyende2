@@ -16,6 +16,9 @@ import 'payment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+  
+  // Dùng flag static để chỉ redirect 1 lần sau khi load trang (tránh loop khi quay lại trang chủ)
+  static bool _hasCheckedRedirect = false;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -34,6 +37,25 @@ class _HomeScreenState extends State<HomeScreen> {
   int soldCurrentPage = 1;
   final int soldItemsPerPage = 4;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkPayOSRedirect();
+  }
+
+  void _checkPayOSRedirect() {
+    if (!kIsWeb || HomeScreen._hasCheckedRedirect) return;
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final uri = Uri.base;
+      // Nếu URL có chứa status (trả về từ PayOS), chuyển hướng sang màn hình thanh toán
+      if (uri.queryParameters.containsKey('status')) {
+        HomeScreen._hasCheckedRedirect = true;
+        Navigator.pushNamed(context, '/payment');
+      }
+    });
+  }
+
   double _asDouble(dynamic value) => value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '') ?? 0;
   bool _isSoldStatus(dynamic value) => (value ?? '').toString().trim().toLowerCase().contains('đã bán');
 
@@ -50,12 +72,22 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận mua'),
         content: Text('Mua tài khoản #$displayCode giá ${NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(price)}?'),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mua ngay'))],
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mua ngay'))
+        ],
       ),
     );
 
     if (confirmed == true) {
-      Navigator.pushNamed(context, '/payment', arguments: PaymentFlowArgs(accountId: accountId, displayCode: displayCode, price: price, rank: (acc['rank'] ?? '').toString(), heroCount: (acc['hero_count'] ?? '').toString(), skinCount: (acc['skin_count'] ?? '').toString()));
+      Navigator.pushNamed(context, '/payment', arguments: PaymentFlowArgs(
+        accountId: accountId, 
+        displayCode: displayCode, 
+        price: price, 
+        rank: (acc['rank'] ?? '').toString(), 
+        heroCount: (acc['hero_count'] ?? '').toString(), 
+        skinCount: (acc['skin_count'] ?? '').toString()
+      ));
     }
   }
 
@@ -149,11 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final available = filtered.where((d) => !_isSoldStatus(d['status'])).toList();
         final sold = filtered.where((d) => _isSoldStatus(d['status'])).toList();
 
-        // Phân trang cho tài khoản còn trống
         final int availableStartIndex = (currentPage - 1) * itemsPerPage;
         final pagedAvailable = available.skip(availableStartIndex).take(itemsPerPage).toList();
 
-        // Phân trang cho tài khoản đã bán
         final int soldStartIndex = (soldCurrentPage - 1) * soldItemsPerPage;
         final pagedSold = sold.skip(soldStartIndex).take(soldItemsPerPage).toList();
 
@@ -184,11 +214,18 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSpacing: 15
       ),
       itemCount: docs.length,
-      itemBuilder: (ctx, i) => AccountCard(
-        acc: docs[i], id: docs[i]['docId'] ?? '', globalIndex: start + i, 
-        onBuy: () => _handleBuyFromHome(docs[i], docs[i]['docId'] ?? '', 123001 + start + i), 
-        onDetail: (a, b, c) => Navigator.pushNamed(context, '/detail', arguments: {'docId': b, 'displayCode': c, 'account': a}),
-      ),
+      itemBuilder: (ctx, i) {
+        // Lấy đúng ID từ trường 'id' của tài khoản (vd: 260001)
+        final int displayId = int.tryParse(docs[i]['id']?.toString() ?? '') ?? (123001 + start + i);
+        
+        return AccountCard(
+          acc: docs[i], 
+          id: docs[i]['docId'] ?? '', 
+          globalIndex: start + i, 
+          onBuy: () => _handleBuyFromHome(docs[i], docs[i]['docId'] ?? '', displayId), 
+          onDetail: (a, b, c) => Navigator.pushNamed(context, '/detail', arguments: {'docId': b, 'displayCode': c, 'account': a}),
+        );
+      },
     );
   }
 

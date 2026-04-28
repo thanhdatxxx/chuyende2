@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'cache_service.dart';
 
 class AuthService with ChangeNotifier {
+  AuthService() {
+    _loadUserFromCache();
+  }
+
   bool _isLoggedIn = false;
   String _userName = ""; // user_name
   String _fullName = ""; // full_name
@@ -17,6 +22,20 @@ class AuthService with ChangeNotifier {
   double get depositedMoney => _depositedMoney;
   bool get isAdmin => _isAdmin;
 
+  void _loadUserFromCache() {
+    final userData = CacheService.getUser();
+    if (userData != null) {
+      _isLoggedIn = true;
+      _userName = userData['userName'] ?? "";
+      _fullName = userData['fullName'] ?? "";
+      _userId = userData['userId'] ?? "";
+      _balance = (userData['balance'] ?? 0).toDouble();
+      _depositedMoney = (userData['depositedMoney'] ?? 0).toDouble();
+      _isAdmin = userData['isAdmin'] ?? false;
+      notifyListeners();
+    }
+  }
+
   void login({
     required String userName,
     String fullName = "",
@@ -32,6 +51,17 @@ class AuthService with ChangeNotifier {
     _balance = balance;
     _depositedMoney = depositedMoney;
     _isAdmin = isAdmin || userName.toLowerCase() == 'admin'; // Auto admin if username is admin
+    
+    // Lưu vào Cache để tránh mất login khi Reload Web
+    CacheService.saveUser({
+      'userName': _userName,
+      'fullName': _fullName,
+      'userId': _userId,
+      'balance': _balance,
+      'depositedMoney': _depositedMoney,
+      'isAdmin': _isAdmin,
+    });
+    
     notifyListeners();
   }
 
@@ -40,6 +70,15 @@ class AuthService with ChangeNotifier {
     if (depositedMoney != null) {
       _depositedMoney = depositedMoney;
     }
+    
+    // Cập nhật lại cache khi đổi số dư
+    final userData = CacheService.getUser();
+    if (userData != null) {
+      userData['balance'] = _balance;
+      if (depositedMoney != null) userData['depositedMoney'] = _depositedMoney;
+      CacheService.saveUser(userData);
+    }
+    
     notifyListeners();
   }
 
@@ -51,6 +90,8 @@ class AuthService with ChangeNotifier {
     _balance = 0;
     _depositedMoney = 0;
     _isAdmin = false;
+    
+    CacheService.clearUser();
     notifyListeners();
   }
 }
