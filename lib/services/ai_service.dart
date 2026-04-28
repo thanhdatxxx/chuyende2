@@ -6,69 +6,108 @@ import '../config/env.dart';
 
 class AIService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _zaloContact = "0942449399"; 
   final String _zaloLink = "https://zalo.me/0942449399"; 
 
   AIService({String? apiKey});
 
   GenerativeModel _createModel(String shopContext) {
     return GenerativeModel(
-      // Cập nhật lên model 2.0 Flash Experimental - Nhanh và thông minh hơn
       model: 'gemini-2.5-flash',
       apiKey: Env.geminiApiKey,
       generationConfig: GenerationConfig(
-        temperature: 0.4,
+        temperature: 0.1, // Giảm temperature để AI phản hồi chính xác hơn, bớt "bay bổng"
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
       ),
       systemInstruction: Content.system('''
-BẠN LÀ NHÂN VIÊN BÁN HÀNG TẬN TÂM CỦA SHOP LIÊN QUÂN MOBILE.
+BẠN LÀ CHUYÊN VIÊN TƯ VẤN BÁN HÀNG CỦA SHOP LIÊN QUÂN MOBILE.
 
-DỮ LIỆU KHO HÀNG HIỆN TẠI (Chỉ tư vấn trong danh sách này):
+DỮ LIỆU KHO HÀNG THỰC TẾ (Chỉ được tư vấn các ID có trong đây):
 $shopContext
 
-QUY TẮC QUAN TRỌNG:
-1. Khi khách hỏi tìm acc, bạn PHẢI tra cứu "DỮ LIỆU KHO HÀNG" ở trên.
-2. Với mỗi tài khoản gợi ý, bạn PHẢI trình bày theo định dạng chuẩn:
-   - Mã số: mã_id | [Tên Rank] - [Số tướng] Tướng - [Số Skin] Skin - Giá: [Giá tiền] [ID:mã_id]
-3. Tuyệt đối PHẢI bao gồm tag [ID:mã_id] ở CUỐI MỖI DÒNG gợi ý tài khoản.
-4. HỖ TRỢ TRỰC TIẾP QUA ZALO: Cung cấp link $_zaloLink khi khách sợ bị lừa, muốn bán acc, xem ảnh chi tiết hoặc khiếu nại.
-5. Luôn thân thiện, chuyên nghiệp và sử dụng Emoji phù hợp.
+NHIỆM VỤ QUAN TRỌNG NHẤT:
+1. Khi khách hỏi tìm acc/tài khoản, bạn PHẢI liệt kê danh sách tài khoản phù hợp nhất từ dữ liệu trên.
+2. Nếu không có acc đúng yêu cầu (sai rank, sai giá), bạn PHẢI nói: "Hiện tại shop chưa có acc đúng như yêu cầu, nhưng mình gửi bạn các mẫu tương tự/đẹp nhất hiện có nhé:" và LIỆT KÊ các acc khác từ kho hàng.
+3. Định dạng bắt buộc cho mỗi tài khoản:
+   - Mã số: [ID:mã_id] | [Tên Rank] - [Số tướng] Tướng - [Số Skin] Skin - Giá: [Giá tiền]
+4. Luôn thêm tag [ID:mã_id] (ví dụ [ID:123456]) vào cuối mỗi dòng để khách có thể nhấn xem chi tiết.
+5. Nếu khách hỏi về uy tín/xem ảnh/mua hàng, hãy dẫn link Zalo: $_zaloLink.
+6. Tuyệt đối không tự bịa ra thông số tài khoản (ID, Rank, Giá) không có trong danh sách trên.
 '''),
     );
   }
 
   Future<String> _getShopContext(String userMessage) async {
     try {
-      Query query = _firestore.collection('accounts').where('status', isNotEqualTo: 'Đã bán');
+      final snapshot = await _firestore
+          .collection('accounts')
+          .where('status', isNotEqualTo: 'Đã bán')
+          .limit(100)
+          .get();
+
+      if (snapshot.docs.isEmpty) return "Kho hàng hiện tại đang trống.";
+
+      List<QueryDocumentSnapshot> allDocs = snapshot.docs;
       String msg = userMessage.toLowerCase();
       
-      if (msg.contains('đồng')) query = query.where('rank', isEqualTo: 'Đồng');
-      else if (msg.contains('bạc')) query = query.where('rank', isEqualTo: 'Bạc');
-      else if (msg.contains('vàng')) query = query.where('rank', isEqualTo: 'Vàng');
-      else if (msg.contains('bạch kim')) query = query.where('rank', isEqualTo: 'Bạch Kim');
-      else if (msg.contains('tinh anh')) query = query.where('rank', isEqualTo: 'Tinh Anh');
-      else if (msg.contains('cao thủ')) query = query.where('rank', isEqualTo: 'Cao Thủ');
-      else if (msg.contains('chiến tướng')) query = query.where('rank', isEqualTo: 'Chiến Tướng');
-      else if (msg.contains('thách đấu')) query = query.where('rank', isEqualTo: 'Thách Đấu');
+      // Lọc giá thông minh hơn
+      double? maxPrice;
+      final pricePatterns = [
+        RegExp(r'(\d+)\s*(triệu|tr|củ)'),
+        RegExp(r'(\d+)\s*k'),
+        RegExp(r'dưới\s*(\d+)\s*(triệu|tr|củ|k)?'),
+      ];
 
-      final accountsSnapshot = await query.limit(50).get();
-
-      if (accountsSnapshot.docs.isEmpty) {
-        final fallbackSnapshot = await _firestore
-            .collection('accounts')
-            .where('status', isNotEqualTo: 'Đã bán')
-            .limit(30)
-            .get();
-        if (fallbackSnapshot.docs.isEmpty) return "Kho hàng hiện tại đang trống.";
-        return _formatDocsToContext(fallbackSnapshot.docs);
+      for (var pattern in pricePatterns) {
+        final match = pattern.firstMatch(msg);
+        if (match != null) {
+          double val = double.tryParse(match.group(1)!) ?? 0;
+          String? unit = match.groupCount >= 2 ? match.group(2) : null;
+          
+          if (unit == 'triệu' || unit == 'tr' || unit == 'củ') {
+            maxPrice = val * 1000000;
+          } else if (unit == 'k') {
+            maxPrice = val * 1000;
+          } else if (val > 0 && val < 5000) { // Ví dụ "10 triệu" nhưng chỉ bắt được "10"
+             maxPrice = val * 1000000;
+          }
+          break;
+        }
       }
 
-      return _formatDocsToContext(accountsSnapshot.docs);
+      // Phát hiện rank
+      List<String> targetRanks = [];
+      final ranks = ['đồng', 'bạc', 'vàng', 'bạch kim', 'tinh anh', 'cao thủ', 'chiến tướng', 'thách đấu'];
+      for (var r in ranks) {
+        if (msg.contains(r)) targetRanks.add(r);
+      }
+
+      List<QueryDocumentSnapshot> filteredDocs = allDocs;
+      
+      if (targetRanks.isNotEmpty) {
+        filteredDocs = filteredDocs.where((doc) {
+          final rank = (doc.data() as Map<String, dynamic>)['rank']?.toString().toLowerCase() ?? '';
+          return targetRanks.any((tr) => rank.contains(tr));
+        }).toList();
+      }
+
+      if (maxPrice != null) {
+        filteredDocs = filteredDocs.where((doc) {
+          final price = (doc.data() as Map<String, dynamic>)['price'] ?? 0;
+          return price <= maxPrice!;
+        }).toList();
+      }
+
+      // Nếu lọc xong mà trống, trả về 15 acc bất kỳ để AI có dữ liệu mà gợi ý
+      if (filteredDocs.isEmpty) {
+        return _formatDocsToContext(allDocs.take(15).toList());
+      }
+
+      return _formatDocsToContext(filteredDocs.take(30).toList());
     } catch (e) {
       print("Error fetching context: $e");
-      return "Không thể kết nối dữ liệu kho hàng.";
+      return "Dữ liệu kho hàng tạm thời không khả dụng.";
     }
   }
 
@@ -78,19 +117,19 @@ QUY TẮC QUAN TRỌNG:
     
     for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
-      final id = data['id'] ?? doc.id; 
+      final id = data['id']?.toString() ?? doc.id; 
       final rank = data['rank'] ?? 'Chưa xác định';
       final heroes = data['hero_count'] ?? 0;
       final skins = data['skin_count'] ?? 0;
       final price = currencyFormat.format(data['price'] ?? 0);
       
-      context += "- ID: $id | Rank: $rank, $heroes Tướng, $skins Skin, Giá: $price.\n";
+      context += "- ID: $id | Rank: $rank, $heroes Tướng, $skins Skin, Giá: $price\n";
     }
     return context;
   }
 
   Stream<String> chatStream(String message, List<Content> history) async* {
-    yield "Đang kiểm tra kho hàng... 🔍"; 
+    yield "Đang kiểm tra kho hàng... 🔍 "; 
     
     int attempts = 0;
     while (attempts < Env.geminiApiKeys.length) {
@@ -98,7 +137,8 @@ QUY TẮC QUAN TRỌNG:
         final shopContext = await _getShopContext(message);
         final model = _createModel(shopContext);
 
-        final cleanHistory = history.length > 6 ? history.sublist(history.length - 6) : history;
+        // Lấy 4 câu hội thoại gần nhất để giữ ngữ cảnh mà không làm loãng Prompt hệ thống
+        final cleanHistory = history.length > 4 ? history.sublist(history.length - 4) : history;
         final chatSession = model.startChat(history: cleanHistory);
         
         final responseStream = chatSession.sendMessageStream(Content.text(message));
@@ -108,16 +148,13 @@ QUY TẮC QUAN TRỌNG:
         }
         return; 
       } catch (e) {
-        print("🔴 Lỗi Gemini: $e");
-        
         attempts++;
         Env.nextKey(); 
-
         if (attempts >= Env.geminiApiKeys.length) {
-          yield "Hệ thống AI đang quá tải. Bạn liên hệ trực tiếp nhân viên tại đây: https://zalo.me/0942449399 để được hỗ trợ nhé! 🙏";
+          yield "\nHệ thống AI đang bận. Liên hệ Zalo $_zaloLink để được hỗ trợ trực tiếp nhé! 🙏";
         } else {
-          yield "Đang thử kết nối lại với máy chủ dự phòng... 🔄";
-          await Future.delayed(const Duration(milliseconds: 1000));
+          yield "\n(Đang thử kết nối lại...) ";
+          await Future.delayed(const Duration(milliseconds: 500));
         }
       }
     }

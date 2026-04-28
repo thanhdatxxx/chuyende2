@@ -80,18 +80,21 @@ class _AIChatBotState extends State<AIChatBot> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isLoading) return;
 
+    // Lưu lại lịch sử TRƯỚC khi thêm tin nhắn mới để gửi lên AI
+    final historyToSend = List<Content>.from(_history);
+
     setState(() {
       _history.add(Content('user', [TextPart(text)]));
       _controller.clear();
       _isLoading = true;
-      _history.add(Content('model', [TextPart("")]));
+      _history.add(Content('model', [TextPart("")])); // Placeholder cho phản hồi AI
     });
 
     _scrollToBottom();
 
     String currentResponse = "";
     try {
-      final stream = _aiService.chatStream(text, _history.take(_history.length - 1).toList());
+      final stream = _aiService.chatStream(text, historyToSend);
       
       await for (final chunk in stream) {
         currentResponse += chunk;
@@ -185,7 +188,7 @@ class _AIChatBotState extends State<AIChatBot> {
                 width: isMobile ? size.width * 0.85 : 400,
                 height: size.height * 0.7,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
+                  color: Colors.black.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   boxShadow: [
@@ -194,7 +197,7 @@ class _AIChatBotState extends State<AIChatBot> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -298,12 +301,10 @@ class _AIChatBotState extends State<AIChatBot> {
     final isUser = content.role == 'user';
     final text = content.parts.whereType<TextPart>().map((e) => e.text).join();
     
-    final RegExp accRegExp = RegExp(r'\[(?:ID|MÃ):([\w-]+)\]', caseSensitive: false);
+    final RegExp accRegExp = RegExp(r'\[ID:([\w-]+)\]', caseSensitive: false);
     final List<String> accountIds = accRegExp.allMatches(text).map((m) => m.group(1)!).toList();
     
-    String cleanText = text.replaceAllMapped(accRegExp, (match) => match.group(1)!)
-                          .replaceAll("**", "")
-                          .trim();
+    String cleanText = text.replaceAll(accRegExp, "").trim();
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -314,7 +315,7 @@ class _AIChatBotState extends State<AIChatBot> {
             margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isUser ? AppStyles.primaryColor.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.15),
+              color: isUser ? AppStyles.primaryColor.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
@@ -323,7 +324,7 @@ class _AIChatBotState extends State<AIChatBot> {
               ),
               border: Border.all(color: isUser ? Colors.white24 : Colors.white10),
             ),
-            child: _buildRichText(cleanText.isEmpty && !isUser ? "Đang suy nghĩ..." : (cleanText.isEmpty ? text : cleanText)),
+            child: _buildRichText(cleanText.isEmpty && !isUser ? "Đang kiểm tra kho hàng... 🔍" : text),
           ),
           if (accountIds.isNotEmpty && !isUser)
             Padding(
@@ -340,34 +341,24 @@ class _AIChatBotState extends State<AIChatBot> {
   }
 
   Widget _buildRichText(String text) {
-    // Regex tìm link Zalo cụ thể hoặc các link nói chung
     final RegExp linkRegExp = RegExp(r'(https?://[^\s]+)', caseSensitive: false);
     final matches = linkRegExp.allMatches(text);
 
     if (matches.isEmpty) {
-      return Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4));
+      return Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5));
     }
 
     List<InlineSpan> spans = [];
     int lastIndex = 0;
 
     for (var match in matches) {
-      // Thêm đoạn chữ thường trước link
       if (match.start > lastIndex) {
-        String preText = text.substring(lastIndex, match.start);
-        // Nếu đoạn chữ trước kết thúc bằng "tại đây: ", chúng ta sẽ xử lý đặc biệt
-        if (preText.endsWith("tại đây: ")) {
-          spans.add(TextSpan(text: preText.substring(0, preText.length - 9)));
-          lastIndex = match.start; // Sẽ xử lý "tại đây" thành link ở bước sau
-        } else {
-          spans.add(TextSpan(text: preText));
-        }
+        spans.add(TextSpan(text: text.substring(lastIndex, match.start)));
       }
 
       String url = match.group(0)!;
       bool isZalo = url.contains("zalo.me");
 
-      // Tạo Link
       spans.add(TextSpan(
         text: isZalo ? "tại đây" : url,
         style: const TextStyle(
@@ -393,7 +384,7 @@ class _AIChatBotState extends State<AIChatBot> {
 
     return RichText(
       text: TextSpan(
-        style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4, fontFamily: 'Roboto'),
+        style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5, fontFamily: 'Roboto'),
         children: spans,
       ),
     );
@@ -403,14 +394,14 @@ class _AIChatBotState extends State<AIChatBot> {
     return ElevatedButton.icon(
       onPressed: () => _handleViewDetail(accountId),
       icon: const Icon(Icons.shopping_cart_outlined, size: 14),
-      label: Text("CHI TIẾT: ${accountId.toUpperCase()}"),
+      label: Text("XEM CHI TIẾT $accountId"),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppStyles.primaryColor.withOpacity(0.8),
+        backgroundColor: Colors.orange.withOpacity(0.9),
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }
