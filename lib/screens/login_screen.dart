@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
+import 'forgot_password_screen.dart';
 
 // Màu sắc chủ đạo từ giao diện hình ảnh
 const Color primaryColor = Color(0xFF22223b);
@@ -151,7 +152,12 @@ class _LoginPageState extends State<LoginPage> {
                           const Text('Ghi Nhớ Tài Khoản', style: TextStyle(color: Color(0xFFFFF7ED), fontSize: 14)),
                           const Spacer(),
                           TextButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+                                );
+                              },
                               child: const Text('Bạn Quên Mật Khẩu?', style: TextStyle(color: Color(0xFFFED7AA), fontSize: 14))
                           ),
                         ],
@@ -482,7 +488,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildTextField(TextEditingController ctrl, String hint, {bool isObscure = false, bool? hideVar, VoidCallback? toggle}) {
     return TextField(
       controller: ctrl,
-      obscureText: isObscure ? (hideVar ?? true) : false,
+      obscureText: isObscure ? (hideVar ?? _hidePass) : false,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFFFED7AA), fontSize: 15),
@@ -502,8 +508,8 @@ class _RegisterPageState extends State<RegisterPage> {
           borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.6),
         ),
         suffixIcon: isObscure ? IconButton(
-          icon: Icon((hideVar ?? true) ? Icons.visibility : Icons.visibility_off, color: const Color(0xFFF97316)),
-          onPressed: toggle,
+          icon: Icon((hideVar ?? _hidePass) ? Icons.visibility : Icons.visibility_off, color: const Color(0xFFF97316)),
+          onPressed: toggle ?? () => setState(() => _hidePass = !_hidePass),
         ) : null,
       ),
       style: const TextStyle(color: Color(0xFFFFF7ED)),
