@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/background_music_service.dart';
 import '../services/auth_service.dart';
 import 'app_styles.dart';
+import '../services/ui_settings_service.dart';
 
 class GlassContainer extends StatelessWidget {
   const GlassContainer({
@@ -83,6 +84,11 @@ class EffectPageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 800;
+    final uiSettings = context.watch<UiSettingsService>();
+    final String bg = uiSettings.backgroundImage;
+    final ImageProvider bgProvider = bg.startsWith('http') || bg.startsWith('https')
+        ? NetworkImage(bg)
+        : AssetImage(bg) as ImageProvider;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -92,10 +98,11 @@ class EffectPageScaffold extends StatelessWidget {
           Positioned.fill(
             child: Opacity(
               opacity: backgroundOpacity,
-              child: Image.asset(
-                'assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg',
+              child: Image(
+                image: bgProvider,
                 fit: BoxFit.cover,
                 filterQuality: kIsWeb ? FilterQuality.none : FilterQuality.low,
+                errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
               ),
             ),
           ),
@@ -307,6 +314,8 @@ class _UserMenuButtonState extends State<UserMenuButton> {
             Navigator.pushNamed(context, '/admin-users');
           } else if (value == 'admin-stats') {
             Navigator.pushNamed(context, '/admin-stats');
+          } else if (value == 'admin-settings') {
+            Navigator.pushNamed(context, '/admin-settings');
           }
         },
         child: AnimatedContainer(
@@ -362,6 +371,10 @@ class _UserMenuButtonState extends State<UserMenuButton> {
             PopupMenuItem<String>(
               value: 'admin-users',
               child: _buildPopupItem(Icons.people, 'Quản lý người dùng'),
+            ),
+            PopupMenuItem<String>(
+              value: 'admin-settings',
+              child: _buildPopupItem(Icons.palette, 'Tùy chỉnh giao diện'),
             ),
             const PopupMenuDivider(height: 1),
           ],

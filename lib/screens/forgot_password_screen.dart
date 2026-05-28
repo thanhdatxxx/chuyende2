@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../services/ui_settings_service.dart';
 import '../widgets/ui_effects.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -139,14 +141,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final uiSettings = context.watch<UiSettingsService>();
+    final String bg = uiSettings.backgroundImage;
+    final ImageProvider bgProvider = bg.startsWith('http') || bg.startsWith('https')
+        ? NetworkImage(bg)
+        : AssetImage(bg) as ImageProvider;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
+                image: bgProvider,
                 fit: BoxFit.cover, 
                 opacity: 0.8
               ),

@@ -24,6 +24,7 @@ class _BankScreenState extends State<BankScreen> {
   String? selectedAmount;
   final TextEditingController _serialController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> networks = ['Viettel', 'Mobifone', 'Vinaphone', 'Zing'];
   final List<String> amounts = ['10,000', '20,000', '50,000', '100,000', '200,000', '500,000'];
@@ -40,6 +41,19 @@ class _BankScreenState extends State<BankScreen> {
     return int.tryParse(digits) ?? 0;
   }
 
+  String _formatMoney(dynamic value) {
+    final n = int.tryParse(value.toString()) ?? 0;
+    final str = n.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +67,7 @@ class _BankScreenState extends State<BankScreen> {
   void dispose() {
     _serialController.dispose();
     _codeController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -173,67 +188,191 @@ class _BankScreenState extends State<BankScreen> {
   }
 
   Widget _buildCardHistory() {
+    final auth = context.watch<AuthService>();
+    if (!auth.isLoggedIn) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('LỊCH SỬ NẠP THẺ', style: TextStyle(color: Color(0xFFF97316), fontSize: 40, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
+        const Text(
+          'LỊCH SỬ NẠP THẺ',
+          style: TextStyle(
+            color: Color(0xFFF97316),
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 15),
         _historySearchBar(),
-        const SizedBox(height: 10),
-        _emptyHistoryBox('Chưa có dữ liệu...'),
+        const SizedBox(height: 15),
+        StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('history')
+              .where('user_name', isEqualTo: auth.userName)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(30.0),
+                  child: CircularProgressIndicator(color: Color(0xFFF97316)),
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return _emptyHistoryBox('Lỗi tải lịch sử: ${snapshot.error}');
+            }
+
+            final docs = snapshot.data?.docs ?? [];
+            
+            // Filter locally by type and search query to avoid composite indexes requirement
+            final filteredDocs = docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>? ?? {};
+              
+              // Only deposits
+              if (data['type'] != 'deposit') return false;
+
+              final query = _searchController.text.trim().toLowerCase();
+              if (query.isEmpty) return true;
+              
+              final network = (data['network'] ?? '').toString().toLowerCase();
+              final serial = (data['serial'] ?? '').toString().toLowerCase();
+              final amount = (data['amount'] ?? '').toString();
+              return network.contains(query) || serial.contains(query) || amount.contains(query);
+            }).toList();
+
+            // Sort locally by created_at descending
+            filteredDocs.sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>? ?? {};
+              final bData = b.data() as Map<String, dynamic>? ?? {};
+              final aTime = aData['created_at'] as Timestamp?;
+              final bTime = bData['created_at'] as Timestamp?;
+              if (aTime == null && bTime == null) return 0;
+              if (aTime == null) return 1;
+              if (bTime == null) return -1;
+              return bTime.compareTo(aTime);
+            });
+
+            if (filteredDocs.isEmpty) {
+              return _emptyHistoryBox(_searchController.text.trim().isEmpty ? 'Chưa có lịch sử nạp thẻ' : 'Không tìm thấy lịch sử phù hợp');
+            }
+
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 800),
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.05)),
+                      columns: const [
+                        DataColumn(label: Text('Thời gian', style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Loại thẻ', style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Mệnh giá', style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Số Serial', style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Trạng thái', style: TextStyle(color: Color(0xFFFED7AA), fontWeight: FontWeight.bold))),
+                      ],
+                      rows: filteredDocs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>? ?? {};
+                        
+                        // Format timestamp
+                        String timeStr = 'N/A';
+                        if (data['created_at'] != null) {
+                          if (data['created_at'] is Timestamp) {
+                            final date = (data['created_at'] as Timestamp).toDate();
+                            timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} ${date.day}/${date.month}/${date.year}';
+                          }
+                        }
+                        
+                        final network = data['network'] ?? 'N/A';
+                        final amount = data['amount'] ?? 0;
+                        final serial = data['serial'] ?? 'N/A';
+                        
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(timeStr, style: const TextStyle(color: Colors.white70))),
+                            DataCell(Text(network.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
+                            DataCell(Text('${_formatMoney(amount)} đ', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold))),
+                            DataCell(Text(serial.toString(), style: const TextStyle(color: Colors.white70))),
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.greenAccent),
+                                ),
+                                child: const Text(
+                                  'Thành công',
+                                  style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
   Widget _historySearchBar() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 350),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Tìm kiếm...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.85),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-            ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 350),
+        child: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Color(0xFF7C2D12), fontWeight: FontWeight.w600),
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Tìm theo serial, mệnh giá, nhà mạng...',
+            hintStyle: const TextStyle(color: Color(0xFFD39B57)),
+            prefixIcon: const Icon(Icons.search, color: Color(0xFFF97316)),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.86),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFF97316))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFF97316))),
           ),
         ),
-        const SizedBox(width: 8),
-        SizedBox(
-          height: 40,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF97316),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {},
-            child: const Icon(Icons.search, color: Colors.black87),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _emptyHistoryBox(String title) {
     return Container(
       width: double.infinity,
-      height: 250,
+      height: 200,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.75),
+        color: Colors.black.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFED7AA))),
-            const SizedBox(height: 10),
-            const Icon(Icons.person_search, size: 110, color: Color(0xFFB45309)),
+            const SizedBox(height: 12),
+            const Icon(Icons.person_search, size: 70, color: Color(0xFFF97316)),
           ],
         ),
       ),

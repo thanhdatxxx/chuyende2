@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BackgroundMusicService extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer();
@@ -27,12 +28,35 @@ class BackgroundMusicService extends ChangeNotifier {
     if (_isInitializing) return;
     _isInitializing = true;
     try {
+      List<String> tracks = [
+        'assets/audio/bai1.mp3',
+        'assets/audio/bai2.ogg',
+        'assets/audio/bai3.ogg',
+      ];
+
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('system_settings')
+            .doc('ui_settings')
+            .get();
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          if (data['music'] != null) {
+            tracks = List<String>.from(data['music']);
+          }
+        }
+      } catch (e) {
+        debugPrint('Lỗi tải danh sách nhạc từ Firestore: $e');
+      }
+
       final playlist = ConcatenatingAudioSource(
-        children: [
-          AudioSource.asset('assets/audio/bai1.mp3'),
-          AudioSource.asset('assets/audio/bai2.ogg'),
-          AudioSource.asset('assets/audio/bai3.ogg'),
-        ],
+        children: tracks.map((track) {
+          if (track.startsWith('http') || track.startsWith('https')) {
+            return AudioSource.uri(Uri.parse(track));
+          } else {
+            return AudioSource.asset(track);
+          }
+        }).toList(),
       );
 
       await _player.setAudioSource(playlist);
@@ -46,6 +70,35 @@ class BackgroundMusicService extends ChangeNotifier {
       _isReady = false;
     } finally {
       _isInitializing = false;
+    }
+  }
+
+  Future<void> updatePlaylist(List<String> newTracks) async {
+    try {
+      final wasPlaying = _player.playing;
+      if (wasPlaying) {
+        await _player.stop();
+      }
+
+      final playlist = ConcatenatingAudioSource(
+        children: newTracks.map((track) {
+          if (track.startsWith('http') || track.startsWith('https')) {
+            return AudioSource.uri(Uri.parse(track));
+          } else {
+            return AudioSource.asset(track);
+          }
+        }).toList(),
+      );
+
+      await _player.setAudioSource(playlist);
+      _isReady = true;
+
+      if (wasPlaying) {
+        await _player.play();
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Lỗi cập nhật danh sách nhạc: $e');
     }
   }
 
@@ -64,7 +117,6 @@ class BackgroundMusicService extends ChangeNotifier {
         debugPrint('Không thể phát nhạc: $e');
       }
     }
-    // _isPlaying sẽ được cập nhật tự động qua listener ở constructor
   }
 
   @override
@@ -73,3 +125,4 @@ class BackgroundMusicService extends ChangeNotifier {
     super.dispose();
   }
 }
+

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/cache_service.dart';
+import '../services/ui_settings_service.dart';
 import '../widgets/app_styles.dart';
 import '../widgets/account_card.dart';
 import '../widgets/filter_bar.dart';
@@ -94,6 +95,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 800;
+    final uiSettings = context.watch<UiSettingsService>();
+    final String bg = uiSettings.backgroundImage;
+    final ImageProvider bgProvider = bg.startsWith('http') || bg.startsWith('https')
+        ? NetworkImage(bg)
+        : AssetImage(bg) as ImageProvider;
 
     return Scaffold(
       backgroundColor: AppStyles.backgroundColor,
@@ -102,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'), 
+                image: bgProvider, 
                 fit: BoxFit.cover, 
                 opacity: 0.78,
                 filterQuality: kIsWeb ? FilterQuality.none : FilterQuality.low,
@@ -116,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _scrollController,
                     child: Column(
                       children: [
-                        _buildBannerSlider(),
+                        _buildBannerSlider(uiSettings.banners),
                         FilterBar(
                           selectedRank: selectedRank, ranks: ranks, minPriceController: _minPriceController, maxPriceController: _maxPriceController,
                           onRankChanged: (v) => setState(() => selectedRank = v),
@@ -145,8 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBannerSlider() {
-    final List<String> imgs = ['assets/images/banner1.jpg', 'assets/images/banner2.jpg', 'assets/images/banner3.jpg'];
+  Widget _buildBannerSlider(List<String> banners) {
     return CarouselSlider(
       options: CarouselOptions(
         autoPlay: true, 
@@ -154,7 +159,38 @@ class _HomeScreenState extends State<HomeScreen> {
         enlargeCenterPage: true, 
         viewportFraction: 0.62,
       ),
-      items: imgs.map((i) => ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.asset(i, fit: BoxFit.cover, width: double.infinity))).toList(),
+      items: banners.map((i) {
+        Widget imageWidget;
+        if (i.startsWith('http') || i.startsWith('https')) {
+          imageWidget = Image.network(
+            i, 
+            fit: BoxFit.cover, 
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: Colors.white10,
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.white30, size: 40),
+              ),
+            ),
+          );
+        } else {
+          imageWidget = Image.asset(
+            i, 
+            fit: BoxFit.cover, 
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: Colors.white10,
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.white30, size: 40),
+              ),
+            ),
+          );
+        }
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: imageWidget,
+        );
+      }).toList(),
     );
   }
 

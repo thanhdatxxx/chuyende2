@@ -172,6 +172,7 @@ class TopMenu extends StatelessWidget {
             if (value == 'user_info') Navigator.pushNamed(context, '/user-detail');
             if (value == 'admin_acc') Navigator.pushNamed(context, '/admin-accounts');
             if (value == 'admin_user') Navigator.pushNamed(context, '/admin-users');
+            if (value == 'admin_settings') Navigator.pushNamed(context, '/admin-settings');
             if (value == 'logout') auth.logout();
           },
           itemBuilder: (context) => [
@@ -187,6 +188,7 @@ class TopMenu extends StatelessWidget {
               if (auth.isAdmin) ...[
                 const PopupMenuItem(value: 'admin_acc', child: Text('Quản lý tài khoản', style: TextStyle(color: Color(0xFFFFF7ED)))),
                 const PopupMenuItem(value: 'admin_user', child: Text('Quản lý người dùng', style: TextStyle(color: Color(0xFFFFF7ED)))),
+                const PopupMenuItem(value: 'admin_settings', child: Text('Tùy chỉnh giao diện', style: TextStyle(color: Color(0xFFFFF7ED)))),
               ],
               const PopupMenuItem(value: 'user_info', child: Text('Thông tin cá nhân', style: TextStyle(color: Color(0xFFFFF7ED)))),
               const PopupMenuItem(value: 'logout', child: Text('Đăng xuất', style: TextStyle(color: Color(0xFFFFF7ED)))),

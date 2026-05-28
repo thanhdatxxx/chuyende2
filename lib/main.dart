@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/background_music_service.dart';
 import 'services/cache_service.dart';
+import 'services/ui_settings_service.dart';
 import 'config/env.dart';
 import 'services/navigation_service.dart'; // Import NavigationService
 
@@ -18,6 +19,7 @@ import 'screens/history_transaction_detail_screen.dart';
 import 'screens/admin_account_manager.dart';
 import 'screens/admin_user_manager.dart';
 import 'screens/admin_statistics_screen.dart';
+import 'screens/admin_ui_settings_screen.dart';
 import 'screens/detail_screen.dart';
 import 'widgets/ui_effects.dart';
 import 'widgets/ai_chatbot.dart';
@@ -41,6 +43,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => UiSettingsService()),
         ChangeNotifierProvider(create: (_) => BackgroundMusicService()),
       ],
       child: MaterialApp(
@@ -93,8 +96,9 @@ class MyApp extends StatelessWidget {
           '/admin-accounts': (context) => const AdminAccountManager(),
           '/admin-users': (context) => const AdminUserManager(),
           '/admin-stats': (context) => const AdminStatisticsScreen(),
+          '/admin-settings': (context) => const AdminUiSettingsScreen(),
         },
       ),
     );
-  }
+   }
 }

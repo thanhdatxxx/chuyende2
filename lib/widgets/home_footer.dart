@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/ui_settings_service.dart';
 import 'app_styles.dart';
 import 'ui_effects.dart';
 
@@ -8,6 +10,7 @@ class HomeFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 700;
+    final uiSettings = context.watch<UiSettingsService>();
 
     return Container(
       width: double.infinity,
@@ -28,13 +31,13 @@ class HomeFooter extends StatelessWidget {
                   _buildFlexibleColumn(
                     isMobile: isMobile,
                     flex: 2,
-                    child: _buildShopInfo(isMobile),
+                    child: _buildShopInfo(isMobile, uiSettings.footerDescription),
                   ),
                   if (isMobile) const SizedBox(height: 30) else const SizedBox(width: 30),
                   _buildFlexibleColumn(
                     isMobile: isMobile,
                     flex: 1,
-                    child: _buildContactInfo(),
+                    child: _buildContactInfo(uiSettings.footerPhone, uiSettings.footerEmail, uiSettings.footerLocation),
                   ),
                   if (isMobile) const SizedBox(height: 30),
                   _buildFlexibleColumn(
@@ -48,7 +51,7 @@ class HomeFooter extends StatelessWidget {
               const Divider(color: Colors.white10, height: 1),
               const SizedBox(height: 15),
               Text(
-                "© 2024 LIENQUAN SHOP VN - All Rights Reserved.",
+                uiSettings.footerCopyright,
                 style: const TextStyle(color: Colors.white38, fontSize: 11),
                 textAlign: isMobile ? TextAlign.center : TextAlign.left,
               ),
@@ -64,7 +67,7 @@ class HomeFooter extends StatelessWidget {
     return Expanded(flex: flex, child: child);
   }
 
-  Widget _buildShopInfo(bool isMobile) {
+  Widget _buildShopInfo(bool isMobile, String description) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -81,23 +84,23 @@ class HomeFooter extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        const Text(
-          "Hệ thống bán tài khoản Liên Quân Mobile uy tín, chất lượng hàng đầu Việt Nam. Giao dịch tự động 24/7.",
-          style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
+        Text(
+          description,
+          style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.4),
         ),
       ],
     );
   }
 
-  Widget _buildContactInfo() {
+  Widget _buildContactInfo(String phone, String email, String location) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("LIÊN HỆ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 12),
-        _footerRow(Icons.phone, "0987.654.321"),
-        _footerRow(Icons.email, "support@lienquanshop.vn"),
-        _footerRow(Icons.location_on, "Hà Nội, Việt Nam"),
+        _footerRow(Icons.phone, phone),
+        _footerRow(Icons.email, email),
+        _footerRow(Icons.location_on, location),
       ],
     );
   }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../widgets/ui_effects.dart';
+import '../services/ui_settings_service.dart';
 import 'forgot_password_screen.dart';
 
 // Màu sắc chủ đạo từ giao diện hình ảnh
@@ -98,6 +99,12 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final uiSettings = context.watch<UiSettingsService>();
+    final String bg = uiSettings.backgroundImage;
+    final ImageProvider bgProvider = bg.startsWith('http') || bg.startsWith('https')
+        ? NetworkImage(bg)
+        : AssetImage(bg) as ImageProvider;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -105,7 +112,7 @@ class _LoginPageState extends State<LoginPage> {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
+                image: bgProvider,
                 fit: BoxFit.cover,
                 opacity: 0.82,
                 filterQuality: FilterQuality.low,
@@ -370,6 +377,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final uiSettings = context.watch<UiSettingsService>();
+    final String bg = uiSettings.backgroundImage;
+    final ImageProvider bgProvider = bg.startsWith('http') || bg.startsWith('https')
+        ? NetworkImage(bg)
+        : AssetImage(bg) as ImageProvider;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -377,7 +390,7 @@ class _RegisterPageState extends State<RegisterPage> {
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: const AssetImage('assets/images/anh-lien-quan-4k-thu-nguyen-ve-than-66.jpg'),
+                image: bgProvider,
                 fit: BoxFit.cover,
                 opacity: 0.82,
                 filterQuality: FilterQuality.low,

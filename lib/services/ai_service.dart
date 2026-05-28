@@ -12,7 +12,7 @@ class AIService {
 
   GenerativeModel _createModel(String shopContext) {
     return GenerativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.1-flash-lite-preview',
       apiKey: Env.geminiApiKey,
       generationConfig: GenerationConfig(
         temperature: 0.1, // Giảm temperature để AI phản hồi chính xác hơn, bớt "bay bổng"
